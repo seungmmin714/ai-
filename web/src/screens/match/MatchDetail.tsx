@@ -1,9 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Camera, Check, X } from 'lucide-react'
+import { Camera, Check, Flag, X } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import QrScanner from '../../components/qr/QrScanner'
+import StarRating from '../../components/StarRating'
+import ReportModal from '../../components/ReportModal'
 import { checkInMatch, completeMatch } from '../../lib/matches'
-import { CATEGORY_LABELS, MATCH_STATUS_LABELS, type Match, type UserRole } from '../../types'
+import { submitReview, subscribeToMatchReviews } from '../../lib/reviews'
+import {
+  CATEGORY_LABELS,
+  MATCH_STATUS_LABELS,
+  type Match,
+  type Review,
+  type UserRole,
+} from '../../types'
 
 export default function MatchDetail({
   match,
@@ -14,9 +24,22 @@ export default function MatchDetail({
   viewerRole: UserRole
   onClose: () => void
 }) {
+  const { profile } = useAuth()
   const [scanning, setScanning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [showReport, setShowReport] = useState(false)
+  const [reviews, setReviews] = useState<Review[]>([])
+
+  useEffect(() => subscribeToMatchReviews(match.id, setReviews), [match.id])
+
+  const isVolunteer = viewerRole === 'volunteer'
+  const toUserId = isVolunteer ? match.requesterId : match.volunteerId
+  const toName = isVolunteer ? match.requesterName : match.volunteerName
+  const myReview = reviews.find((r) => r.fromUserId === profile?.uid) ?? null
+  const receivedReview = reviews.find((r) => r.toUserId === profile?.uid) ?? null
 
   async function handleScan(text: string) {
     setScanning(false)
@@ -40,9 +63,33 @@ export default function MatchDetail({
     setSubmitting(true)
     try {
       await completeMatch(match.id, match.requestId)
-      onClose()
+      // 닫지 않고 완료 상태로 남겨 곧바로 후기를 남길 수 있게 한다
     } catch {
       setError('완료 처리에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (!profile) return
+    if (rating === 0) {
+      setError('별점을 선택해주세요.')
+      return
+    }
+    setError(null)
+    setSubmitting(true)
+    try {
+      await submitReview({
+        matchId: match.id,
+        fromUserId: profile.uid,
+        fromName: profile.name,
+        toUserId,
+        rating,
+        comment: comment.trim(),
+      })
+    } catch {
+      setError('후기 등록에 실패했어요. 다시 시도해주세요.')
     } finally {
       setSubmitting(false)
     }
@@ -53,7 +100,7 @@ export default function MatchDetail({
       <div className="mt-auto flex max-h-dvh w-full max-w-[430px] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">매칭 상세</h2>
-          <button type="button" onClick={onClose} className="min-h-12 min-w-12">
+          <button type="button" onClick={onClose} aria-label="닫기" className="min-h-12 min-w-12">
             <X />
           </button>
         </div>
@@ -67,18 +114,64 @@ export default function MatchDetail({
           </div>
 
           <p className="text-base text-ink-soft">
-            {viewerRole === 'recipient'
-              ? `봉사자 ${match.volunteerName}님과 매칭되었어요.`
-              : `${match.requesterName}님의 요청이에요.`}
+            {isVolunteer
+              ? `${match.requesterName}님의 요청이에요.`
+              : `봉사자 ${match.volunteerName}님과 매칭되었어요.`}
           </p>
 
-          {viewerRole === 'recipient' ? (
+          {match.status === 'reported' ? (
+            <div className="flex flex-col items-center gap-2 rounded-2xl bg-danger-tint px-4 py-6">
+              <p className="text-base font-semibold text-danger">
+                신고 접수로 일시중지된 매칭이에요.
+              </p>
+            </div>
+          ) : match.status === 'completed' ? (
+            <div className="flex flex-col gap-4">
+              {receivedReview && (
+                <div className="rounded-2xl border border-line bg-surface-alt p-4">
+                  <p className="text-sm font-semibold text-ink-soft">받은 후기</p>
+                  <div className="mt-1">
+                    <StarRating value={receivedReview.rating} />
+                  </div>
+                  {receivedReview.comment && (
+                    <p className="mt-2 text-base">{receivedReview.comment}</p>
+                  )}
+                </div>
+              )}
+              {myReview ? (
+                <div className="flex flex-col items-center gap-2 rounded-2xl bg-green-tint px-4 py-6">
+                  <Check className="text-green" />
+                  <p className="text-base font-semibold text-green">후기를 남겼어요. 감사합니다!</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <span className="text-lg font-semibold">{toName}님은 어떠셨나요?</span>
+                  <StarRating value={rating} onChange={setRating} size={32} />
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={3}
+                    placeholder="한 줄 후기를 남겨주세요 (선택)"
+                    className="rounded-xl border border-line bg-surface px-4 py-3 text-base"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSubmitReview}
+                    disabled={submitting}
+                    className="min-h-12 rounded-full bg-primary text-lg font-bold text-white disabled:opacity-60"
+                  >
+                    {submitting ? '등록 중...' : '후기 남기기'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : viewerRole === 'recipient' ? (
             match.status === 'confirmed' ? (
               <div className="flex flex-col items-center gap-3">
                 <div className="rounded-2xl border border-line bg-white p-4">
                   <QRCodeCanvas value={match.qrCode} size={200} />
                 </div>
-                <p className="text-center text-base text-ink-soft">
+                <p className="text-center text-lg text-ink-soft">
                   봉사자가 도착하면 이 QR을 보여주세요.
                 </p>
               </div>
@@ -117,8 +210,27 @@ export default function MatchDetail({
           {error && (
             <p className="rounded-xl bg-danger-tint px-4 py-3 text-base text-danger">{error}</p>
           )}
+
+          {match.status !== 'reported' && (
+            <button
+              type="button"
+              onClick={() => setShowReport(true)}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-danger text-base font-semibold text-danger"
+            >
+              <Flag size={18} />
+              신고하기
+            </button>
+          )}
         </div>
       </div>
+
+      {showReport && profile && (
+        <ReportModal
+          matchId={match.id}
+          reporterId={profile.uid}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   )
 }

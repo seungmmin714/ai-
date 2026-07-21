@@ -13,6 +13,7 @@ import {
   type Match,
 } from '../../types'
 import RequestFormModal from './RequestFormModal'
+import MyPage from '../mypage/MyPage'
 
 export default function RecipientHome() {
   const { user, profile, logOut } = useAuth()
@@ -21,6 +22,7 @@ export default function RecipientHome() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
+  const [showMyPage, setShowMyPage] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -41,13 +43,22 @@ export default function RecipientHome() {
           <h1 className="text-2xl font-bold text-primary">여기잇다</h1>
           <p className="mt-1 text-lg text-ink-soft">{profile?.name}님, 안녕하세요</p>
         </div>
-        <button
-          type="button"
-          onClick={() => logOut()}
-          className="min-h-12 rounded-full border border-line px-4 text-base text-ink-soft"
-        >
-          로그아웃
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMyPage(true)}
+            className="min-h-12 rounded-full border border-line px-4 text-base text-ink-soft"
+          >
+            내 정보
+          </button>
+          <button
+            type="button"
+            onClick={() => logOut()}
+            className="min-h-12 rounded-full border border-line px-4 text-base text-ink-soft"
+          >
+            로그아웃
+          </button>
+        </div>
       </header>
 
       <button
@@ -60,7 +71,7 @@ export default function RecipientHome() {
 
       {matches.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">진행 중인 매칭</h2>
+          <h2 className="text-lg font-semibold">내 매칭</h2>
           {matches.map((m) => (
             <button
               key={m.id}
@@ -109,7 +120,7 @@ export default function RecipientHome() {
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-base text-ink-soft">{r.description}</p>
+              <p className="mt-1 text-lg text-ink">{r.description}</p>
               {r.status === 'open' && (
                 <button
                   type="button"
@@ -125,6 +136,7 @@ export default function RecipientHome() {
       </section>
 
       {showForm && <RequestFormModal onClose={() => setShowForm(false)} />}
+      {showMyPage && <MyPage onClose={() => setShowMyPage(false)} />}
       {selectedMatch && (
         <MatchDetail
           match={selectedMatch}

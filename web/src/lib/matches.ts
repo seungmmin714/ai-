@@ -47,9 +47,7 @@ function subscribeToMatchesByField(
   return onSnapshot(
     q,
     (snap) => {
-      const matches = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as Match)
-        .filter((m) => m.status === 'confirmed' || m.status === 'in_progress')
+      const matches = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Match)
       matches.sort((a, b) => b.createdAt - a.createdAt)
       callback(matches)
     },

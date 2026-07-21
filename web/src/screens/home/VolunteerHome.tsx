@@ -6,6 +6,7 @@ import KakaoMap from '../../components/map/KakaoMap'
 import { subscribeToOpenRequests } from '../../lib/requests'
 import { applyToRequest, subscribeToVolunteerMatches } from '../../lib/matches'
 import MatchDetail from '../match/MatchDetail'
+import MyPage from '../mypage/MyPage'
 import {
   CATEGORY_LABELS,
   DURATION_LABELS,
@@ -39,6 +40,7 @@ export default function VolunteerHome() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
   const [applying, setApplying] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
+  const [showMyPage, setShowMyPage] = useState(false)
 
   useEffect(() => {
     const gender = profile?.gender
@@ -75,13 +77,22 @@ export default function VolunteerHome() {
           <h1 className="text-2xl font-bold text-primary">여기잇다</h1>
           <p className="mt-1 text-sm text-ink-soft">{profile?.name}님, 봉사자 홈</p>
         </div>
-        <button
-          type="button"
-          onClick={() => logOut()}
-          className="min-h-12 rounded-full border border-line px-4 text-sm text-ink-soft"
-        >
-          로그아웃
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMyPage(true)}
+            className="min-h-12 rounded-full border border-line px-4 text-sm text-ink-soft"
+          >
+            내 정보
+          </button>
+          <button
+            type="button"
+            onClick={() => logOut()}
+            className="min-h-12 rounded-full border border-line px-4 text-sm text-ink-soft"
+          >
+            로그아웃
+          </button>
+        </div>
       </header>
 
       <div className="h-96 overflow-hidden rounded-2xl">
@@ -99,6 +110,7 @@ export default function VolunteerHome() {
                   <button
                     type="button"
                     onClick={() => setSelected(r)}
+                    aria-label={`${CATEGORY_LABELS[r.category]} 요청`}
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-white shadow-md ${CATEGORY_PIN_CLASS[r.category]}`}
                   >
                     <Icon size={18} />
@@ -134,7 +146,7 @@ export default function VolunteerHome() {
               </div>
               <p className="text-sm text-ink-soft">{selected.requesterName}님 · 예상 {DURATION_LABELS[selected.estimatedDuration]}</p>
             </div>
-            <button type="button" onClick={() => setSelected(null)} className="min-h-12 min-w-12">
+            <button type="button" onClick={() => setSelected(null)} aria-label="닫기" className="min-h-12 min-w-12">
               <X size={20} />
             </button>
           </div>
@@ -186,6 +198,7 @@ export default function VolunteerHome() {
           onClose={() => setSelectedMatchId(null)}
         />
       )}
+      {showMyPage && <MyPage onClose={() => setShowMyPage(false)} />}
     </div>
   )
 }

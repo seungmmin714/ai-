@@ -12,7 +12,7 @@ import {
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 import type { Gender, UserProfile, UserRole } from '../types'
 
@@ -41,16 +41,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubProfile: (() => void) | undefined
+    const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser)
+      unsubProfile?.()
+      unsubProfile = undefined
       if (firebaseUser) {
-        const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-        setProfile(snap.exists() ? (snap.data() as UserProfile) : null)
+        unsubProfile = onSnapshot(
+          doc(db, 'users', firebaseUser.uid),
+          (snap) => {
+            setProfile(snap.exists() ? (snap.data() as UserProfile) : null)
+            setLoading(false)
+          },
+          () => setLoading(false),
+        )
       } else {
         setProfile(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
+    return () => {
+      unsubProfile?.()
+      unsubAuth()
+    }
   }, [])
 
   async function signUp({ name, email, password, role, gender }: SignUpInput) {

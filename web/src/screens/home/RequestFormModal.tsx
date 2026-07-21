@@ -92,7 +92,7 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
       <div className="flex max-h-dvh w-full max-w-[430px] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 mt-auto">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">도움 요청하기</h2>
-          <button type="button" onClick={onClose} className="min-h-12 min-w-12">
+          <button type="button" onClick={onClose} aria-label="닫기" className="min-h-12 min-w-12">
             <X />
           </button>
         </div>
