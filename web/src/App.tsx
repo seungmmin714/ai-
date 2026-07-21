@@ -1,19 +1,34 @@
-import KakaoMap from './components/map/KakaoMap'
+import { useState } from 'react'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import LoginScreen from './screens/auth/LoginScreen'
+import SignUpScreen from './screens/auth/SignUpScreen'
+import RecipientHome from './screens/home/RecipientHome'
+import VolunteerHome from './screens/home/VolunteerHome'
+
+function AppRoutes() {
+  const { user, profile, loading } = useAuth()
+  const [authView, setAuthView] = useState<'login' | 'signup'>('login')
+
+  if (loading) {
+    return <div className="flex min-h-dvh items-center justify-center text-ink-soft">불러오는 중...</div>
+  }
+
+  if (!user || !profile) {
+    return authView === 'login' ? (
+      <LoginScreen onSwitchToSignUp={() => setAuthView('signup')} />
+    ) : (
+      <SignUpScreen onSwitchToLogin={() => setAuthView('login')} />
+    )
+  }
+
+  return profile.role === 'recipient' ? <RecipientHome /> : <VolunteerHome />
+}
 
 function App() {
   return (
-    <div className="flex min-h-dvh flex-col gap-4 p-5">
-      <header>
-        <h1 className="text-2xl font-bold text-primary">핑동</h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          1단계: 프로젝트 셋업 + 카카오맵 연동 테스트
-        </p>
-      </header>
-
-      <div className="h-80 overflow-hidden rounded-2xl">
-        <KakaoMap />
-      </div>
-    </div>
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   )
 }
 
