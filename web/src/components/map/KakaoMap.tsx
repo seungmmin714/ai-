@@ -1,9 +1,10 @@
-import { Map, MapMarker, useKakaoLoader } from 'react-kakao-maps-sdk'
+import type { ReactNode } from 'react'
+import { Map, useKakaoLoader } from 'react-kakao-maps-sdk'
 
 const KAKAO_APP_KEY = import.meta.env.VITE_KAKAO_MAP_APP_KEY
 
 // 연남동 (데모용 기본 위치)
-const DEFAULT_CENTER = { lat: 37.5636, lng: 126.9251 }
+export const DEFAULT_CENTER = { lat: 37.5636, lng: 126.9251 }
 
 function MapStatus({ message, tone = 'default' }: { message: string; tone?: 'default' | 'error' }) {
   return (
@@ -19,7 +20,13 @@ function MapStatus({ message, tone = 'default' }: { message: string; tone?: 'def
   )
 }
 
-function LoadedKakaoMap() {
+interface LoadedKakaoMapProps {
+  center: { lat: number; lng: number }
+  level: number
+  children?: ReactNode
+}
+
+function LoadedKakaoMap({ center, level, children }: LoadedKakaoMapProps) {
   const [loading, error] = useKakaoLoader({ appkey: KAKAO_APP_KEY })
 
   if (loading) {
@@ -36,15 +43,19 @@ function LoadedKakaoMap() {
   }
 
   return (
-    <Map center={DEFAULT_CENTER} level={4} style={{ width: '100%', height: '100%' }}>
-      <MapMarker position={DEFAULT_CENTER}>
-        <div className="px-2 py-1 text-xs">연남동</div>
-      </MapMarker>
+    <Map center={center} level={level} style={{ width: '100%', height: '100%' }}>
+      {children}
     </Map>
   )
 }
 
-export default function KakaoMap() {
+interface KakaoMapProps {
+  center?: { lat: number; lng: number }
+  level?: number
+  children?: ReactNode
+}
+
+export default function KakaoMap({ center = DEFAULT_CENTER, level = 4, children }: KakaoMapProps) {
   if (!KAKAO_APP_KEY) {
     return (
       <MapStatus
@@ -53,5 +64,9 @@ export default function KakaoMap() {
     )
   }
 
-  return <LoadedKakaoMap />
+  return (
+    <LoadedKakaoMap center={center} level={level}>
+      {children}
+    </LoadedKakaoMap>
+  )
 }
