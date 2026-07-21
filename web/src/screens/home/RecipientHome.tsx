@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { cancelHelpRequest, subscribeToMyRequests } from '../../lib/requests'
-import { CATEGORY_LABELS, STATUS_LABELS, type HelpRequest } from '../../types'
+import { CATEGORY_LABELS, FREQUENCY_LABELS, STATUS_LABELS, type HelpRequest } from '../../types'
 import RequestFormModal from './RequestFormModal'
 
 export default function RecipientHome() {
@@ -56,6 +56,16 @@ export default function RecipientHome() {
               <div className="flex items-center justify-between">
                 <span className="text-lg font-bold">{CATEGORY_LABELS[r.category]}</span>
                 <span className="text-base text-ink-soft">{STATUS_LABELS[r.status]}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full bg-primary-tint px-2 py-0.5 text-xs font-semibold text-primary">
+                  {FREQUENCY_LABELS[r.frequency]}
+                </span>
+                {r.sameGenderOnly && (
+                  <span className="rounded-full bg-green-tint px-2 py-0.5 text-xs font-semibold text-green">
+                    동성 봉사자만
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-base text-ink-soft">{r.description}</p>
               {r.status === 'open' && (

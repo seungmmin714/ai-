@@ -13,6 +13,7 @@ export interface UserProfile {
 
 export type RequestCategory = 'labor' | 'digital' | 'errand' | 'safety'
 export type EstimatedDuration = 'short' | 'medium' | 'long'
+export type RequestFrequency = 'once' | 'recurring'
 export type RequestStatus = 'open' | 'matched' | 'in_progress' | 'completed' | 'cancelled'
 
 export const CATEGORY_LABELS: Record<RequestCategory, string> = {
@@ -26,6 +27,11 @@ export const DURATION_LABELS: Record<EstimatedDuration, string> = {
   short: '10분 내외',
   medium: '20분 정도',
   long: '30분 이상',
+}
+
+export const FREQUENCY_LABELS: Record<RequestFrequency, string> = {
+  once: '한 번만',
+  recurring: '자주 필요',
 }
 
 export const STATUS_LABELS: Record<RequestStatus, string> = {
@@ -44,6 +50,9 @@ export interface HelpRequest {
   description: string
   category: RequestCategory
   estimatedDuration: EstimatedDuration
+  frequency: RequestFrequency
+  sameGenderOnly: boolean
+  requesterGender: Gender
   location: { lat: number; lng: number }
   status: RequestStatus
   createdAt: number

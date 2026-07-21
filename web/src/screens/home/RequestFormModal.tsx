@@ -4,7 +4,12 @@ import { Dumbbell, MapPin, ShieldCheck, ShoppingBag, Smartphone, X } from 'lucid
 import { useAuth } from '../../context/AuthContext'
 import { createHelpRequest } from '../../lib/requests'
 import KakaoMap from '../../components/map/KakaoMap'
-import { DURATION_LABELS, type EstimatedDuration, type RequestCategory } from '../../types'
+import {
+  DURATION_LABELS,
+  type EstimatedDuration,
+  type RequestCategory,
+  type RequestFrequency,
+} from '../../types'
 
 const DEFAULT_LOCATION = { lat: 37.5636, lng: 126.9251 } // 연남동
 
@@ -17,11 +22,18 @@ const CATEGORY_OPTIONS: { value: RequestCategory; label: string; icon: typeof Du
 
 const DURATION_OPTIONS: EstimatedDuration[] = ['short', 'medium', 'long']
 
+const FREQUENCY_OPTIONS: { value: RequestFrequency; label: string }[] = [
+  { value: 'once', label: '한 번만 필요해요' },
+  { value: 'recurring', label: '자주 필요해요' },
+]
+
 export default function RequestFormModal({ onClose }: { onClose: () => void }) {
   const { user, profile } = useAuth()
   const [category, setCategory] = useState<RequestCategory | null>(null)
   const [description, setDescription] = useState('')
   const [duration, setDuration] = useState<EstimatedDuration>('medium')
+  const [frequency, setFrequency] = useState<RequestFrequency>('once')
+  const [sameGenderOnly, setSameGenderOnly] = useState(false)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationDenied, setLocationDenied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,9 +71,12 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
       await createHelpRequest({
         requesterId: user.uid,
         requesterName: profile.name,
+        requesterGender: profile.gender,
         category,
         description: description.trim(),
         estimatedDuration: duration,
+        frequency,
+        sameGenderOnly,
         location: location ?? DEFAULT_LOCATION,
       })
       onClose()
@@ -150,6 +165,34 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-lg font-semibold">얼마나 자주 필요하세요?</span>
+            <div className="flex gap-2">
+              {FREQUENCY_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFrequency(value)}
+                  className={`min-h-12 flex-1 rounded-xl border-2 text-base font-semibold ${
+                    frequency === value ? 'border-primary bg-primary-tint' : 'border-line bg-surface'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border-2 border-line bg-surface px-4 py-3">
+            <input
+              type="checkbox"
+              checked={sameGenderOnly}
+              onChange={(e) => setSameGenderOnly(e.target.checked)}
+              className="h-6 w-6 accent-primary"
+            />
+            <span className="text-base font-semibold">같은 성별 봉사자만 받을게요</span>
+          </label>
 
           {error && (
             <p className="rounded-xl bg-danger-tint px-4 py-3 text-base text-danger">{error}</p>

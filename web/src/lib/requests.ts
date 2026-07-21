@@ -11,8 +11,10 @@ import { db } from './firebase'
 import {
   CATEGORY_LABELS,
   type EstimatedDuration,
+  type Gender,
   type HelpRequest,
   type RequestCategory,
+  type RequestFrequency,
 } from '../types'
 
 const requestsRef = collection(db, 'helpRequests')
@@ -20,9 +22,12 @@ const requestsRef = collection(db, 'helpRequests')
 interface CreateHelpRequestInput {
   requesterId: string
   requesterName: string
+  requesterGender: Gender
   category: RequestCategory
   description: string
   estimatedDuration: EstimatedDuration
+  frequency: RequestFrequency
+  sameGenderOnly: boolean
   location: { lat: number; lng: number }
 }
 
@@ -30,10 +35,13 @@ export async function createHelpRequest(input: CreateHelpRequestInput) {
   const newRequest: Omit<HelpRequest, 'id'> = {
     requesterId: input.requesterId,
     requesterName: input.requesterName,
+    requesterGender: input.requesterGender,
     title: `${CATEGORY_LABELS[input.category]} 도움`,
     description: input.description,
     category: input.category,
     estimatedDuration: input.estimatedDuration,
+    frequency: input.frequency,
+    sameGenderOnly: input.sameGenderOnly,
     location: input.location,
     status: 'open',
     createdAt: Date.now(),
@@ -59,6 +67,7 @@ export function subscribeToMyRequests(
 }
 
 export function subscribeToOpenRequests(
+  viewerGender: Gender,
   callback: (requests: HelpRequest[]) => void,
   onError?: (error: Error) => void,
 ) {
@@ -66,7 +75,11 @@ export function subscribeToOpenRequests(
   return onSnapshot(
     q,
     (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HelpRequest))
+      const requests = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as HelpRequest)
+        // 동성 매칭 옵션: 다른 성별 봉사자에게는 해당 요청을 숨긴다
+        .filter((r) => !r.sameGenderOnly || r.requesterGender === viewerGender)
+      callback(requests)
     },
     (error) => onError?.(error),
   )
