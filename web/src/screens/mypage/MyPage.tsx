@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import WarmthBadge from '../../components/WarmthBadge'
 import StarRating from '../../components/StarRating'
@@ -7,7 +6,7 @@ import { subscribeToReviewsForUser } from '../../lib/reviews'
 import { saveGuardianContact, verifyGuardianContact } from '../../lib/users'
 import type { GuardianContact, Review } from '../../types'
 
-export default function MyPage({ onClose }: { onClose: () => void }) {
+export default function MyPage() {
   const { user, profile, logOut } = useAuth()
   const [reviews, setReviews] = useState<Review[]>([])
 
@@ -23,16 +22,9 @@ export default function MyPage({ onClose }: { onClose: () => void }) {
     : 0
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center bg-bg">
-      <div className="flex max-h-dvh w-full max-w-[430px] flex-col overflow-y-auto p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">마이페이지</h1>
-          <button type="button" onClick={onClose} aria-label="닫기" className="min-h-12 min-w-12">
-            <X />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-6">
+    <div className="h-full overflow-y-auto p-5">
+      <h1 className="mb-4 text-2xl font-bold">마이페이지</h1>
+      <div className="flex flex-col gap-6">
           <section className="flex items-center justify-between rounded-2xl border border-line bg-surface p-5">
             <div>
               <p className="text-xl font-bold">{profile.name}</p>
@@ -83,7 +75,6 @@ export default function MyPage({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </div>
   )
 }
 

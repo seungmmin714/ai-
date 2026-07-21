@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginScreen from './screens/auth/LoginScreen'
 import SignUpScreen from './screens/auth/SignUpScreen'
-import RecipientHome from './screens/home/RecipientHome'
-import VolunteerHome from './screens/home/VolunteerHome'
+import Home from './screens/home/Home'
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth()
@@ -21,7 +20,7 @@ function AppRoutes() {
     )
   }
 
-  return profile.role === 'recipient' ? <RecipientHome /> : <VolunteerHome />
+  return <Home />
 }
 
 function App() {
