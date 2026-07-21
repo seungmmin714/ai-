@@ -8,7 +8,7 @@ import { saveGuardianContact, verifyGuardianContact } from '../../lib/users'
 import type { GuardianContact, Review } from '../../types'
 
 export default function MyPage({ onClose }: { onClose: () => void }) {
-  const { user, profile } = useAuth()
+  const { user, profile, logOut } = useAuth()
   const [reviews, setReviews] = useState<Review[]>([])
 
   useEffect(() => {
@@ -73,6 +73,14 @@ export default function MyPage({ onClose }: { onClose: () => void }) {
           {profile.role === 'recipient' && (
             <GuardianSection uid={profile.uid} guardian={profile.guardianContact} />
           )}
+
+          <button
+            type="button"
+            onClick={() => logOut()}
+            className="min-h-12 rounded-full border border-line text-base font-semibold text-ink-soft"
+          >
+            로그아웃
+          </button>
         </div>
       </div>
     </div>
