@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react'
+import { QrCode } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { cancelHelpRequest, subscribeToMyRequests } from '../../lib/requests'
-import { CATEGORY_LABELS, FREQUENCY_LABELS, STATUS_LABELS, type HelpRequest } from '../../types'
+import { subscribeToRequesterMatches } from '../../lib/matches'
+import MatchDetail from '../match/MatchDetail'
+import {
+  CATEGORY_LABELS,
+  FREQUENCY_LABELS,
+  MATCH_STATUS_LABELS,
+  STATUS_LABELS,
+  type HelpRequest,
+  type Match,
+} from '../../types'
 import RequestFormModal from './RequestFormModal'
 
 export default function RecipientHome() {
@@ -9,11 +19,20 @@ export default function RecipientHome() {
   const [showForm, setShowForm] = useState(false)
   const [requests, setRequests] = useState<HelpRequest[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [matches, setMatches] = useState<Match[]>([])
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     return subscribeToMyRequests(user.uid, setRequests, (error) => setLoadError(error.message))
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    return subscribeToRequesterMatches(user.uid, setMatches)
+  }, [user])
+
+  const selectedMatch = matches.find((m) => m.id === selectedMatchId) ?? null
 
   return (
     <div className="flex min-h-dvh flex-col gap-6 p-5">
@@ -38,6 +57,29 @@ export default function RecipientHome() {
       >
         도움 요청하기
       </button>
+
+      {matches.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">진행 중인 매칭</h2>
+          {matches.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setSelectedMatchId(m.id)}
+              className="flex items-center justify-between rounded-2xl border-2 border-primary bg-primary-tint p-4 text-left"
+            >
+              <div>
+                <span className="text-lg font-bold">{CATEGORY_LABELS[m.category]}</span>
+                <p className="text-base text-ink-soft">{m.volunteerName}님과 매칭됨</p>
+              </div>
+              <span className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-sm font-semibold text-white">
+                <QrCode size={16} />
+                {MATCH_STATUS_LABELS[m.status]}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">내 요청 목록</h2>
@@ -83,6 +125,13 @@ export default function RecipientHome() {
       </section>
 
       {showForm && <RequestFormModal onClose={() => setShowForm(false)} />}
+      {selectedMatch && (
+        <MatchDetail
+          match={selectedMatch}
+          viewerRole="recipient"
+          onClose={() => setSelectedMatchId(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { CustomOverlayMap } from 'react-kakao-maps-sdk'
-import { Dumbbell, ShieldCheck, ShoppingBag, Smartphone, X } from 'lucide-react'
+import { Dumbbell, Heart, QrCode, ShieldCheck, ShoppingBag, Smartphone, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import KakaoMap from '../../components/map/KakaoMap'
 import { subscribeToOpenRequests } from '../../lib/requests'
+import { applyToRequest, subscribeToVolunteerMatches } from '../../lib/matches'
+import MatchDetail from '../match/MatchDetail'
 import {
   CATEGORY_LABELS,
   DURATION_LABELS,
   FREQUENCY_LABELS,
+  MATCH_STATUS_LABELS,
   type HelpRequest,
+  type Match,
   type RequestCategory,
 } from '../../types'
 
@@ -31,12 +35,38 @@ export default function VolunteerHome() {
   const [requests, setRequests] = useState<HelpRequest[]>([])
   const [selected, setSelected] = useState<HelpRequest | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [matches, setMatches] = useState<Match[]>([])
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
+  const [applying, setApplying] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
 
   useEffect(() => {
     const gender = profile?.gender
     if (!gender) return
     return subscribeToOpenRequests(gender, setRequests, (error) => setLoadError(error.message))
   }, [profile?.gender])
+
+  useEffect(() => {
+    const uid = profile?.uid
+    if (!uid) return
+    return subscribeToVolunteerMatches(uid, setMatches)
+  }, [profile?.uid])
+
+  const selectedMatch = matches.find((m) => m.id === selectedMatchId) ?? null
+
+  async function handleApply(request: HelpRequest) {
+    if (!profile) return
+    setApplyError(null)
+    setApplying(true)
+    try {
+      await applyToRequest(request, profile)
+      setSelected(null)
+    } catch (err) {
+      setApplyError(err instanceof Error ? err.message : '참여에 실패했어요.')
+    } finally {
+      setApplying(false)
+    }
+  }
 
   return (
     <div className="flex min-h-dvh flex-col gap-4 p-5">
@@ -109,7 +139,52 @@ export default function VolunteerHome() {
             </button>
           </div>
           <p className="mt-2 text-base">{selected.description}</p>
+          {applyError && (
+            <p className="mt-3 rounded-xl bg-danger-tint px-4 py-3 text-sm text-danger">
+              {applyError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => handleApply(selected)}
+            disabled={applying}
+            className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-lg font-bold text-white disabled:opacity-60"
+          >
+            <Heart size={20} />
+            {applying ? '참여 중...' : '참여하기'}
+          </button>
         </div>
+      )}
+
+      {matches.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">내 매칭</h2>
+          {matches.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setSelectedMatchId(m.id)}
+              className="flex items-center justify-between rounded-2xl border border-line bg-surface p-4 text-left"
+            >
+              <div>
+                <span className="text-lg font-bold">{CATEGORY_LABELS[m.category]}</span>
+                <p className="text-sm text-ink-soft">{m.requesterName}님</p>
+              </div>
+              <span className="flex items-center gap-1 rounded-full bg-primary-tint px-3 py-1 text-sm font-semibold text-primary">
+                <QrCode size={16} />
+                {MATCH_STATUS_LABELS[m.status]}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
+
+      {selectedMatch && (
+        <MatchDetail
+          match={selectedMatch}
+          viewerRole="volunteer"
+          onClose={() => setSelectedMatchId(null)}
+        />
       )}
     </div>
   )

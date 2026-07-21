@@ -57,3 +57,27 @@ export interface HelpRequest {
   status: RequestStatus
   createdAt: number
 }
+
+export type MatchStatus = 'confirmed' | 'in_progress' | 'completed' | 'reported'
+
+export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
+  confirmed: '매칭 완료',
+  in_progress: '진행 중',
+  completed: '봉사 완료',
+  reported: '일시중지',
+}
+
+export interface Match {
+  id: string
+  requestId: string
+  requesterId: string
+  requesterName: string
+  volunteerId: string
+  volunteerName: string
+  category: RequestCategory
+  qrCode: string
+  status: MatchStatus
+  checkInAt?: number
+  checkOutAt?: number
+  createdAt: number
+}
