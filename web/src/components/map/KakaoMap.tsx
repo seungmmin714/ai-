@@ -23,10 +23,11 @@ function MapStatus({ message, tone = 'default' }: { message: string; tone?: 'def
 interface LoadedKakaoMapProps {
   center: { lat: number; lng: number }
   level: number
+  onClick?: (pos: { lat: number; lng: number }) => void
   children?: ReactNode
 }
 
-function LoadedKakaoMap({ center, level, children }: LoadedKakaoMapProps) {
+function LoadedKakaoMap({ center, level, onClick, children }: LoadedKakaoMapProps) {
   const [loading, error] = useKakaoLoader({ appkey: KAKAO_APP_KEY })
 
   if (loading) {
@@ -43,7 +44,15 @@ function LoadedKakaoMap({ center, level, children }: LoadedKakaoMapProps) {
   }
 
   return (
-    <Map center={center} level={level} style={{ width: '100%', height: '100%' }}>
+    <Map
+      center={center}
+      level={level}
+      style={{ width: '100%', height: '100%' }}
+      onClick={(_, mouseEvent) => {
+        const latLng = mouseEvent.latLng
+        onClick?.({ lat: latLng.getLat(), lng: latLng.getLng() })
+      }}
+    >
       {children}
     </Map>
   )
@@ -52,10 +61,16 @@ function LoadedKakaoMap({ center, level, children }: LoadedKakaoMapProps) {
 interface KakaoMapProps {
   center?: { lat: number; lng: number }
   level?: number
+  onClick?: (pos: { lat: number; lng: number }) => void
   children?: ReactNode
 }
 
-export default function KakaoMap({ center = DEFAULT_CENTER, level = 4, children }: KakaoMapProps) {
+export default function KakaoMap({
+  center = DEFAULT_CENTER,
+  level = 4,
+  onClick,
+  children,
+}: KakaoMapProps) {
   if (!KAKAO_APP_KEY) {
     return (
       <MapStatus
@@ -65,7 +80,7 @@ export default function KakaoMap({ center = DEFAULT_CENTER, level = 4, children 
   }
 
   return (
-    <LoadedKakaoMap center={center} level={level}>
+    <LoadedKakaoMap center={center} level={level} onClick={onClick}>
       {children}
     </LoadedKakaoMap>
   )

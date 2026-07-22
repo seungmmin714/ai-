@@ -146,16 +146,20 @@ export default function Home() {
   const mapRequests =
     mode === 'browse' ? browseRequests : myRequests.filter((r) => r.status !== 'cancelled')
   const chatMatches = allMatches.filter((m) => m.status !== 'pending')
+  // 단체방: 요청 1건당 방 하나 — 같은 requestId의 매칭은 하나로 묶는다
+  const chatRooms = chatMatches.filter(
+    (m, i, arr) => arr.findIndex((x) => x.requestId === m.requestId) === i,
+  )
   const openChat = chatMatches.find((m) => m.id === openChatMatchId) ?? null
   const manageRequest = myRequests.find((r) => r.id === manageRequestId) ?? null
 
-  // 목록용: 내 위치 기준 1km 이내(가까운 순). 위치를 모르면 전체 표시.
+  // 목록용: 내 위치 기준 1km 이내(가까운 순). 위치를 모르면 1km 모드에선 아무것도 표시하지 않는다.
   const listRequests = browseRequests
     .map((r) => ({
       request: r,
       distance: myLocation ? distanceMeters(myLocation, r.location) : null,
     }))
-    .filter((x) => !nearOnly || x.distance === null || x.distance <= NEARBY_RADIUS_M)
+    .filter((x) => !nearOnly || (x.distance !== null && x.distance <= NEARBY_RADIUS_M))
     .sort((a, b) => (a.distance ?? Number.MAX_VALUE) - (b.distance ?? Number.MAX_VALUE))
 
   // 알림은 별도 컬렉션 없이 내 매칭 상태에서 파생한다.
@@ -258,11 +262,6 @@ export default function Home() {
               </button>
             </div>
           </div>
-          {nearOnly && !myLocation && (
-            <p className="mb-3 rounded-xl bg-surface-alt px-4 py-2 text-sm text-ink-soft">
-              위치 권한을 허용하면 1km 이내 활동만 골라 보여드려요.
-            </p>
-          )}
           {loadError && (
             <p className="mb-3 rounded-2xl bg-danger-tint px-4 py-3 text-sm text-danger">
               목록을 불러오지 못했습니다: {loadError}
@@ -290,11 +289,30 @@ export default function Home() {
             </div>
           )}
           {listRequests.length === 0 ? (
-            <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-base text-ink-soft">
-              {nearOnly && myLocation
-                ? '1km 이내에 등록된 활동이 없어요. 전체로 바꾸면 다른 지역 활동도 볼 수 있어요.'
-                : '주변에 등록된 요청이 없어요.'}
-            </p>
+            nearOnly && !myLocation ? (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface px-5 py-8 text-center">
+                <p className="text-base text-ink-soft">
+                  내 위치를 알 수 없어 1km 이내 활동을 보여드릴 수 없어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={locateMe}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-base font-bold text-white"
+                >
+                  <LocateFixed size={18} />
+                  내 위치 허용하기
+                </button>
+                <p className="text-sm text-ink-faint">
+                  또는 위의 '전체'를 누르면 모든 지역 활동을 볼 수 있어요.
+                </p>
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-base text-ink-soft">
+                {nearOnly
+                  ? '1km 이내에 등록된 활동이 없어요. 전체로 바꾸면 다른 지역 활동도 볼 수 있어요.'
+                  : '주변에 등록된 요청이 없어요.'}
+              </p>
+            )
           ) : (
             <div className="flex flex-col gap-3">
               {listRequests.map(({ request: r, distance }) => {
@@ -575,17 +593,18 @@ export default function Home() {
           ) : (
             <div className="h-full overflow-y-auto p-5">
               <h2 className="mb-3 text-xl font-bold">채팅</h2>
-              {chatMatches.length === 0 ? (
+              {chatRooms.length === 0 ? (
                 <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-base text-ink-soft">
-                  아직 채팅방이 없어요. 참여 신청이 수락되면 채팅이 열려요.
+                  아직 채팅방이 없어요. 참여 신청이 수락되면 단체 채팅방이 열려요.
                 </p>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {chatMatches.map((m) => {
-                    const other = m.volunteerId === uid ? m.requesterName : m.volunteerName
+                  {chatRooms.map((m) => {
+                    const title =
+                      m.volunteerId === uid ? `${m.requesterName}님의 요청` : '내 요청 단체방'
                     return (
                       <button
-                        key={m.id}
+                        key={m.requestId}
                         type="button"
                         onClick={() => setOpenChatMatchId(m.id)}
                         className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left"
@@ -594,7 +613,7 @@ export default function Home() {
                           <MessageCircle size={22} />
                         </span>
                         <div className="min-w-0 flex-grow">
-                          <p className="font-bold">{other}님</p>
+                          <p className="font-bold">{title}</p>
                           <p className="text-sm text-ink-soft">
                             {CATEGORY_LABELS[m.category]} · {MATCH_STATUS_LABELS[m.status]}
                           </p>

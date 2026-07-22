@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, Send } from 'lucide-react'
+import { ChevronLeft, Send, Users } from 'lucide-react'
 import { sendMessage, subscribeToMessages } from '../../lib/chat'
+import { subscribeToRequestMatches } from '../../lib/matches'
 import { CATEGORY_LABELS, type ChatMessage, type Match } from '../../types'
 
 export default function ChatRoom({
@@ -15,18 +16,27 @@ export default function ChatRoom({
   onBack: () => void
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [roomMatches, setRoomMatches] = useState<Match[]>([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const otherName =
-    match.volunteerId === currentUserId ? match.requesterName : match.volunteerName
-
-  useEffect(() => subscribeToMessages(match.id, setMessages), [match.id])
+  // 단체방: 메시지·참여자 모두 요청(request) 단위
+  useEffect(() => subscribeToMessages(match.requestId, setMessages), [match.requestId])
+  useEffect(() => subscribeToRequestMatches(match.requestId, setRoomMatches), [match.requestId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // 참여자 = 요청자 + 수락된 봉사자들
+  const acceptedVolunteers = roomMatches.filter(
+    (m) => m.status !== 'pending' && m.status !== 'reported',
+  )
+  const memberNames = [
+    `${match.requesterName}(요청자)`,
+    ...acceptedVolunteers.map((m) => m.volunteerName),
+  ]
 
   async function handleSend() {
     const value = text.trim()
@@ -34,7 +44,7 @@ export default function ChatRoom({
     setSending(true)
     setText('')
     try {
-      await sendMessage(match.id, currentUserId, currentUserName, value)
+      await sendMessage(match.requestId, currentUserId, currentUserName, value)
     } catch {
       setText(value) // 실패 시 입력 복원
     } finally {
@@ -53,9 +63,15 @@ export default function ChatRoom({
         >
           <ChevronLeft />
         </button>
-        <div>
-          <p className="font-bold">{otherName}님</p>
-          <p className="text-xs text-ink-soft">{CATEGORY_LABELS[match.category]} 매칭</p>
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 font-bold">
+            {CATEGORY_LABELS[match.category]} 채팅방
+            <span className="flex items-center gap-0.5 text-xs font-semibold text-ink-soft">
+              <Users size={13} />
+              {memberNames.length}
+            </span>
+          </p>
+          <p className="truncate text-xs text-ink-soft">{memberNames.join(', ')}</p>
         </div>
       </div>
 
@@ -68,7 +84,8 @@ export default function ChatRoom({
         {messages.map((m) => {
           const mine = m.senderId === currentUserId
           return (
-            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+            <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
+              {!mine && <p className="mb-0.5 px-1 text-xs text-ink-soft">{m.senderName}</p>}
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2 text-base ${
                   mine ? 'bg-primary text-white' : 'bg-surface-alt text-ink'

@@ -35,9 +35,7 @@ export default function MyPage() {
           <section className="flex items-center justify-between rounded-2xl border border-line bg-surface p-5">
             <div>
               <p className="text-xl font-bold">{profile.name}</p>
-              <p className="text-base text-ink-soft">
-                {profile.role === 'recipient' ? '도움이 필요해요' : '봉사자'}
-              </p>
+              <p className="text-base text-ink-soft">{profile.email}</p>
             </div>
             <WarmthBadge score={profile.warmthScore} />
           </section>
@@ -71,9 +69,8 @@ export default function MyPage() {
 
           <PhotosSection uid={profile.uid} />
 
-          {profile.role === 'recipient' && (
-            <GuardianSection uid={profile.uid} guardian={profile.guardianContact} />
-          )}
+          {/* 역할 구분 없는 통합 홈이라 보호자 연동은 모두에게 노출 (선택 항목) */}
+          <GuardianSection uid={profile.uid} guardian={profile.guardianContact} />
 
           <button
             type="button"

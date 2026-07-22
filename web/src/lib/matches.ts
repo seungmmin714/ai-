@@ -98,6 +98,24 @@ export function subscribeToVolunteerMatches(
   return subscribeToMatchesByField('volunteerId', volunteerId, callback, onError)
 }
 
+// 한 요청에 달린 매칭 전체 구독 (단체 채팅 참여자 목록 등)
+export function subscribeToRequestMatches(
+  requestId: string,
+  callback: (matches: Match[]) => void,
+  onError?: (error: Error) => void,
+) {
+  const q = query(matchesRef, where('requestId', '==', requestId))
+  return onSnapshot(
+    q,
+    (snap) => {
+      const matches = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Match)
+      matches.sort((a, b) => a.createdAt - b.createdAt)
+      callback(matches)
+    },
+    (error) => onError?.(error),
+  )
+}
+
 export function subscribeToRequesterMatches(
   requesterId: string,
   callback: (matches: Match[]) => void,

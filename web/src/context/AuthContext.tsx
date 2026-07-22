@@ -14,13 +14,12 @@ import {
 } from 'firebase/auth'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
-import type { Gender, UserProfile, UserRole } from '../types'
+import type { Gender, UserProfile } from '../types'
 
 interface SignUpInput {
   name: string
   email: string
   password: string
-  role: UserRole
   gender: Gender
 }
 
@@ -66,13 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  async function signUp({ name, email, password, role, gender }: SignUpInput) {
+  async function signUp({ name, email, password, gender }: SignUpInput) {
     const credential = await createUserWithEmailAndPassword(auth, email, password)
     const newProfile: UserProfile = {
       uid: credential.user.uid,
       name,
       email,
-      role,
+      // 통합 홈으로 역할 구분이 없어져 가입 시 선택하지 않는다 (기존 데이터 호환용 기본값)
+      role: 'volunteer',
       gender,
       warmthScore: 36.5,
       createdAt: Date.now(),

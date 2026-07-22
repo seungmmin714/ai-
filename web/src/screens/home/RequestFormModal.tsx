@@ -35,6 +35,7 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
   const [sameGenderOnly, setSameGenderOnly] = useState(false)
   const [needed, setNeeded] = useState(1)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [locationDenied, setLocationDenied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -42,13 +43,19 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocation(DEFAULT_LOCATION)
+      setMapCenter(DEFAULT_LOCATION)
       setLocationDenied(true)
       return
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setLocation(loc)
+        setMapCenter(loc)
+      },
       () => {
         setLocation(DEFAULT_LOCATION)
+        setMapCenter(DEFAULT_LOCATION)
         setLocationDenied(true)
       },
       { timeout: 5000 },
@@ -125,10 +132,17 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
 
           <div className="flex flex-col gap-2">
             <span className="text-lg font-semibold">요청 위치</span>
-            <div className="h-40 overflow-hidden rounded-2xl">
-              {location ? (
-                <KakaoMap center={location} level={4}>
-                  <MapMarker position={location} />
+            <div className="h-52 overflow-hidden rounded-2xl">
+              {location && mapCenter ? (
+                <KakaoMap center={mapCenter} level={4} onClick={(pos) => setLocation(pos)}>
+                  <MapMarker
+                    position={location}
+                    draggable
+                    onDragEnd={(marker) => {
+                      const pos = marker.getPosition()
+                      setLocation({ lat: pos.getLat(), lng: pos.getLng() })
+                    }}
+                  />
                 </KakaoMap>
               ) : (
                 <div className="flex h-full items-center justify-center rounded-2xl border border-line bg-surface-alt text-sm text-ink-soft">
@@ -136,9 +150,12 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
                 </div>
               )}
             </div>
+            <p className="text-sm text-ink-soft">
+              지도를 누르거나 핀을 끌어서 도움받을 위치를 바꿀 수 있어요.
+            </p>
             {locationDenied && (
               <p className="text-sm text-ink-soft">
-                위치 권한이 없어 기본 위치(연남동)로 등록됩니다.
+                위치 권한이 없어 기본 위치(연남동)에서 시작합니다.
               </p>
             )}
           </div>

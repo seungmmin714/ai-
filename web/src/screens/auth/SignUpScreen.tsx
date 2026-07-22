@@ -1,15 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import type { Gender, UserRole } from '../../types'
-
-const ROLE_OPTIONS: { value: UserRole; title: string; description: string }[] = [
-  { value: 'recipient', title: '도움이 필요해요', description: '이웃에게 간단한 도움을 요청하세요' },
-  { value: 'volunteer', title: '도움을 주고 싶어요', description: '가까운 이웃에게 온기를 나눠주세요' },
-]
+import type { Gender } from '../../types'
 
 export default function SignUpScreen({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const { signUp } = useAuth()
-  const [role, setRole] = useState<UserRole | null>(null)
   const [gender, setGender] = useState<Gender>('female')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -19,14 +13,10 @@ export default function SignUpScreen({ onSwitchToLogin }: { onSwitchToLogin: () 
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!role) {
-      setError('역할을 선택해주세요.')
-      return
-    }
     setError(null)
     setSubmitting(true)
     try {
-      await signUp({ name, email, password, role, gender })
+      await signUp({ name, email, password, gender })
     } catch (err) {
       setError(err instanceof Error ? err.message : '가입에 실패했습니다.')
     } finally {
@@ -42,25 +32,6 @@ export default function SignUpScreen({ onSwitchToLogin }: { onSwitchToLogin: () 
       </header>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div className="flex flex-col gap-3">
-          <span className="text-lg font-semibold">어떤 역할로 가입하시나요?</span>
-          {ROLE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setRole(option.value)}
-              className={`min-h-12 rounded-2xl border-2 px-5 py-4 text-left transition ${
-                role === option.value
-                  ? 'border-primary bg-primary-tint'
-                  : 'border-line bg-surface'
-              }`}
-            >
-              <span className="block text-lg font-bold">{option.title}</span>
-              <span className="block text-base text-ink-soft">{option.description}</span>
-            </button>
-          ))}
-        </div>
-
         <label className="flex flex-col gap-2">
           <span className="text-lg font-semibold">이름</span>
           <input
