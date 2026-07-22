@@ -330,8 +330,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
-      <header className="z-20 flex items-center justify-between bg-surface px-5 py-3 shadow-sm">
+    <div className="flex h-dvh flex-col bg-bg">
+      <header className="z-20 flex shrink-0 items-center justify-between bg-surface px-5 py-3 shadow-sm">
         <h1 className="text-2xl font-extrabold text-primary">여기잇다</h1>
         <div className="flex items-center gap-1">
           <button
@@ -357,7 +357,7 @@ export default function Home() {
       </header>
 
       {(tab === 'map' || tab === 'list') && (
-        <div className="bg-surface px-4 pb-3">
+        <div className="shrink-0 bg-surface px-4 pb-3">
           <div className="flex rounded-full bg-surface-alt p-1">
             <button
               type="button"
@@ -381,7 +381,7 @@ export default function Home() {
         </div>
       )}
 
-      <main className="relative flex-grow overflow-hidden">
+      <main className="relative min-h-0 flex-grow overflow-hidden">
         {tab === 'map' && (
           <>
             <div className="absolute inset-0">
@@ -542,7 +542,7 @@ export default function Home() {
         {tab === 'profile' && <MyPage />}
       </main>
 
-      <nav className="z-40 flex items-center justify-around bg-surface px-2 pb-6 pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
+      <nav className="z-40 flex shrink-0 items-center justify-around bg-surface px-2 pb-6 pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
         <NavItem icon={MapIcon} label="지도" active={tab === 'map'} onClick={() => setTab('map')} />
         <NavItem icon={List} label="목록" active={tab === 'list'} onClick={() => setTab('list')} />
         <NavItem
