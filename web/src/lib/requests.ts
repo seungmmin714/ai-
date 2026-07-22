@@ -28,6 +28,7 @@ interface CreateHelpRequestInput {
   estimatedDuration: EstimatedDuration
   frequency: RequestFrequency
   sameGenderOnly: boolean
+  neededVolunteers: number
   location: { lat: number; lng: number }
 }
 
@@ -42,6 +43,7 @@ export async function createHelpRequest(input: CreateHelpRequestInput) {
     estimatedDuration: input.estimatedDuration,
     frequency: input.frequency,
     sameGenderOnly: input.sameGenderOnly,
+    neededVolunteers: input.neededVolunteers,
     location: input.location,
     status: 'open',
     createdAt: Date.now(),

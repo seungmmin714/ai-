@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { CustomOverlayMap } from 'react-kakao-maps-sdk'
 import {
   Bell,
-  Dumbbell,
   Heart,
   List,
   LocateFixed,
@@ -10,15 +9,14 @@ import {
   MessageCircle,
   Plus,
   QrCode,
-  ShieldCheck,
-  ShoppingBag,
   Siren,
-  Smartphone,
   User,
+  Users,
   X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import KakaoMap, { DEFAULT_CENTER } from '../../components/map/KakaoMap'
+import { CATEGORY_ICON, CATEGORY_PIN_CLASS } from '../../components/categoryMeta'
 import {
   cancelHelpRequest,
   subscribeToMyRequests,
@@ -33,6 +31,7 @@ import MatchDetail from '../match/MatchDetail'
 import MyPage from '../mypage/MyPage'
 import ChatRoom from '../chat/ChatRoom'
 import RequestFormModal from './RequestFormModal'
+import ApplicantsModal from './ApplicantsModal'
 import {
   CATEGORY_LABELS,
   DURATION_LABELS,
@@ -45,30 +44,16 @@ import {
   type UserRole,
 } from '../../types'
 
-const CATEGORY_ICON: Record<RequestCategory, typeof Dumbbell> = {
-  labor: Dumbbell,
-  digital: Smartphone,
-  errand: ShoppingBag,
-  safety: ShieldCheck,
-}
-
-const CATEGORY_PIN_CLASS: Record<RequestCategory, string> = {
-  labor: 'bg-primary',
-  digital: 'bg-info',
-  errand: 'bg-green',
-  safety: 'bg-danger',
-}
-
 type Tab = 'map' | 'list' | 'chat' | 'sos' | 'profile'
 type Mode = 'browse' | 'mine'
 type CategoryFilter = RequestCategory | 'all'
 
 const FILTER_CHIPS: { value: CategoryFilter; label: string }[] = [
   { value: 'all', label: '전체' },
-  { value: 'labor', label: CATEGORY_LABELS.labor },
-  { value: 'digital', label: CATEGORY_LABELS.digital },
-  { value: 'errand', label: CATEGORY_LABELS.errand },
-  { value: 'safety', label: CATEGORY_LABELS.safety },
+  ...(Object.entries(CATEGORY_LABELS) as [RequestCategory, string][]).map(([value, label]) => ({
+    value: value as CategoryFilter,
+    label,
+  })),
 ]
 
 export default function Home() {
@@ -92,6 +77,7 @@ export default function Home() {
   const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showNotifications, setShowNotifications] = useState(false)
   const [openChatMatchId, setOpenChatMatchId] = useState<string | null>(null)
+  const [manageRequestId, setManageRequestId] = useState<string | null>(null)
 
   useEffect(() => {
     const gender = profile?.gender
@@ -114,8 +100,11 @@ export default function Home() {
     return subscribeToRequesterMatches(uid, setRequesterMatches)
   }, [uid])
 
+  // 내가 이미 지원한 요청은 둘러보기에서 숨긴다
+  const appliedRequestIds = new Set(volunteerMatches.map((m) => m.requestId))
   const browseRequests = openRequests
     .filter((r) => r.requesterId !== uid)
+    .filter((r) => !appliedRequestIds.has(r.id))
     .filter((r) => filter === 'all' || r.category === filter)
   const allMatches = [...volunteerMatches, ...requesterMatches]
   const selectedMatch = allMatches.find((m) => m.id === selectedMatchId) ?? null
@@ -125,28 +114,33 @@ export default function Home() {
     mode === 'browse' ? browseRequests : myRequests.filter((r) => r.status !== 'cancelled')
   const chatMatches = allMatches.filter((m) => m.status !== 'pending')
   const openChat = chatMatches.find((m) => m.id === openChatMatchId) ?? null
+  const manageRequest = myRequests.find((r) => r.id === manageRequestId) ?? null
 
-  // 알림은 별도 컬렉션 없이 내 매칭 상태에서 파생한다
+  // 알림은 별도 컬렉션 없이 내 매칭 상태에서 파생한다.
+  // requestId가 있으면 탭 시 지원자 관리 화면, 없으면 매칭 상세로 이동.
   const notifications = [
     ...requesterMatches
       .filter((m) => m.status === 'pending')
       .map((m) => ({
         id: `pend-${m.id}`,
         matchId: m.id,
-        text: `${m.volunteerName}님이 회원님의 ${CATEGORY_LABELS[m.category]} 요청에 참여 신청했어요. 수락해주세요.`,
+        requestId: m.requestId as string | null,
+        text: `${m.volunteerName}님이 회원님의 ${CATEGORY_LABELS[m.category]} 요청에 지원했어요. 확인해주세요.`,
       })),
     ...volunteerMatches
       .filter((m) => m.status === 'confirmed')
       .map((m) => ({
         id: `acc-${m.id}`,
         matchId: m.id,
-        text: `${m.requesterName}님이 회원님의 ${CATEGORY_LABELS[m.category]} 봉사 신청을 수락했어요!`,
+        requestId: null as string | null,
+        text: `${m.requesterName}님이 회원님의 ${CATEGORY_LABELS[m.category]} 봉사 지원을 수락했어요!`,
       })),
     ...allMatches
       .filter((m) => m.status === 'completed')
       .map((m) => ({
         id: `done-${m.id}`,
         matchId: m.id,
+        requestId: null as string | null,
         text: `${CATEGORY_LABELS[m.category]} 봉사가 완료되었어요. 후기를 남겨보세요.`,
       })),
     ...allMatches
@@ -154,6 +148,7 @@ export default function Home() {
       .map((m) => ({
         id: `rep-${m.id}`,
         matchId: m.id,
+        requestId: null as string | null,
         text: '신고 접수로 일시중지된 매칭이 있어요.',
       })),
   ]
@@ -241,7 +236,8 @@ export default function Home() {
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-bold">{CATEGORY_LABELS[r.category]}</h3>
                         <span className="whitespace-nowrap text-xs font-semibold text-ink-soft">
-                          {FREQUENCY_LABELS[r.frequency]} · {DURATION_LABELS[r.estimatedDuration]}
+                          {FREQUENCY_LABELS[r.frequency]} · {DURATION_LABELS[r.estimatedDuration]} ·
+                          모집 {r.neededVolunteers ?? 1}명
                         </span>
                       </div>
                       <p className="mt-1 line-clamp-2 text-sm text-ink-soft">{r.description}</p>
@@ -277,7 +273,12 @@ export default function Home() {
         ) : (
           <div className="flex flex-col gap-3">
             {myRequests.map((r) => {
-              const match = requesterMatches.find((m) => m.requestId === r.id)
+              const apps = requesterMatches.filter((m) => m.requestId === r.id)
+              const pendingCount = apps.filter((m) => m.status === 'pending').length
+              const acceptedCount = apps.filter(
+                (m) => m.status !== 'pending' && m.status !== 'reported',
+              ).length
+              const needed = r.neededVolunteers ?? 1
               return (
                 <div key={r.id} className="rounded-2xl border border-line bg-surface p-4">
                   <div className="flex items-center justify-between">
@@ -287,6 +288,9 @@ export default function Home() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className="rounded-full bg-primary-tint px-2 py-0.5 text-xs font-semibold text-primary">
                       {FREQUENCY_LABELS[r.frequency]}
+                    </span>
+                    <span className="rounded-full bg-surface-alt px-2 py-0.5 text-xs font-semibold text-ink-soft">
+                      모집 {needed}명 · 확정 {acceptedCount}명
                     </span>
                     {r.sameGenderOnly && (
                       <span className="rounded-full bg-green-tint px-2 py-0.5 text-xs font-semibold text-green">
@@ -305,14 +309,14 @@ export default function Home() {
                         요청 취소
                       </button>
                     )}
-                    {match && (
+                    {apps.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setSelectedMatchId(match.id)}
+                        onClick={() => setManageRequestId(r.id)}
                         className="flex min-h-12 flex-1 items-center justify-center gap-1 rounded-full bg-primary text-base font-bold text-white"
                       >
-                        <QrCode size={16} />
-                        {match.status === 'pending' ? '신청 수락하기' : '매칭 보기'}
+                        <Users size={16} />
+                        지원자 보기{pendingCount > 0 && ` (${pendingCount})`}
                       </button>
                     )}
                   </div>
@@ -576,7 +580,8 @@ export default function Home() {
               </button>
             </div>
             <p className="text-sm text-ink-soft">
-              {selected.requesterName}님 · 예상 {DURATION_LABELS[selected.estimatedDuration]}
+              {selected.requesterName}님 · 예상 {DURATION_LABELS[selected.estimatedDuration]} · 모집{' '}
+              {selected.neededVolunteers ?? 1}명
             </p>
             <p className="mt-2 text-base">{selected.description}</p>
             {applyError && (
@@ -597,6 +602,19 @@ export default function Home() {
         </div>
       )}
 
+      {manageRequest && (
+        <ApplicantsModal
+          request={manageRequest}
+          matches={requesterMatches.filter((m) => m.requestId === manageRequest.id)}
+          onClose={() => setManageRequestId(null)}
+          onOpenChat={(matchId) => {
+            setManageRequestId(null)
+            setOpenChatMatchId(matchId)
+            setTab('chat')
+          }}
+          onOpenMatch={(matchId) => setSelectedMatchId(matchId)}
+        />
+      )}
       {selectedMatch && (
         <MatchDetail
           match={selectedMatch}
@@ -622,7 +640,11 @@ export default function Home() {
                     key={n.id}
                     type="button"
                     onClick={() => {
-                      setSelectedMatchId(n.matchId)
+                      if (n.requestId) {
+                        setManageRequestId(n.requestId)
+                      } else {
+                        setSelectedMatchId(n.matchId)
+                      }
                       setShowNotifications(false)
                     }}
                     className="rounded-xl border border-line bg-surface-alt p-3 text-left text-sm"

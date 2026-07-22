@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { MapMarker } from 'react-kakao-maps-sdk'
-import { Dumbbell, MapPin, ShieldCheck, ShoppingBag, Smartphone, X } from 'lucide-react'
+import { MapPin, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { createHelpRequest } from '../../lib/requests'
 import KakaoMap from '../../components/map/KakaoMap'
+import { CATEGORY_ICON } from '../../components/categoryMeta'
 import {
+  CATEGORY_LABELS,
   DURATION_LABELS,
   type EstimatedDuration,
   type RequestCategory,
@@ -13,14 +15,11 @@ import {
 
 const DEFAULT_LOCATION = { lat: 37.5636, lng: 126.9251 } // 연남동
 
-const CATEGORY_OPTIONS: { value: RequestCategory; label: string; icon: typeof Dumbbell }[] = [
-  { value: 'labor', label: '힘쓰는 일', icon: Dumbbell },
-  { value: 'digital', label: '스마트폰/PC', icon: Smartphone },
-  { value: 'errand', label: '심부름', icon: ShoppingBag },
-  { value: 'safety', label: '안전 확인', icon: ShieldCheck },
-]
+const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as RequestCategory[]
 
 const DURATION_OPTIONS: EstimatedDuration[] = ['short', 'medium', 'long']
+
+const NEEDED_OPTIONS = [1, 2, 3, 4, 5]
 
 const FREQUENCY_OPTIONS: { value: RequestFrequency; label: string }[] = [
   { value: 'once', label: '한 번만 필요해요' },
@@ -34,6 +33,7 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
   const [duration, setDuration] = useState<EstimatedDuration>('medium')
   const [frequency, setFrequency] = useState<RequestFrequency>('once')
   const [sameGenderOnly, setSameGenderOnly] = useState(false)
+  const [needed, setNeeded] = useState(1)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationDenied, setLocationDenied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +77,7 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
         estimatedDuration: duration,
         frequency,
         sameGenderOnly,
+        neededVolunteers: needed,
         location: location ?? DEFAULT_LOCATION,
       })
       onClose()
@@ -101,19 +102,24 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
           <div className="flex flex-col gap-3">
             <span className="text-lg font-semibold">어떤 도움이 필요하신가요?</span>
             <div className="grid grid-cols-2 gap-3">
-              {CATEGORY_OPTIONS.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setCategory(value)}
-                  className={`flex min-h-12 flex-col items-center gap-2 rounded-2xl border-2 py-4 ${
-                    category === value ? 'border-primary bg-primary-tint' : 'border-line bg-surface'
-                  }`}
-                >
-                  <Icon />
-                  <span className="text-base font-semibold">{label}</span>
-                </button>
-              ))}
+              {CATEGORY_OPTIONS.map((value) => {
+                const Icon = CATEGORY_ICON[value]
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCategory(value)}
+                    className={`flex min-h-12 flex-col items-center gap-2 rounded-2xl border-2 py-4 ${
+                      category === value
+                        ? 'border-primary bg-primary-tint'
+                        : 'border-line bg-surface'
+                    }`}
+                  >
+                    <Icon />
+                    <span className="text-base font-semibold">{CATEGORY_LABELS[value]}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -161,6 +167,24 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
                   }`}
                 >
                   {DURATION_LABELS[value]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-lg font-semibold">몇 명이 필요하세요?</span>
+            <div className="flex gap-2">
+              {NEEDED_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setNeeded(n)}
+                  className={`min-h-12 flex-1 rounded-xl border-2 text-base font-semibold ${
+                    needed === n ? 'border-primary bg-primary-tint' : 'border-line bg-surface'
+                  }`}
+                >
+                  {n}명
                 </button>
               ))}
             </div>

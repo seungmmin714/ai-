@@ -75,7 +75,7 @@ export default function MatchDetail({
     setError(null)
     setSubmitting(true)
     try {
-      await acceptMatch(match.id)
+      await acceptMatch(match.id, match.requestId)
     } catch {
       setError('수락에 실패했어요. 다시 시도해주세요.')
     } finally {
@@ -87,7 +87,7 @@ export default function MatchDetail({
     setError(null)
     setSubmitting(true)
     try {
-      await declineMatch(match.id, match.requestId)
+      await declineMatch(match.id)
       onClose()
     } catch {
       setError('처리에 실패했어요. 다시 시도해주세요.')
@@ -192,6 +192,13 @@ export default function MatchDetail({
             </div>
           ) : match.status === 'completed' ? (
             <div className="flex flex-col gap-4">
+              {match.checkInAt && (
+                <p className="rounded-xl bg-green-tint px-4 py-2 text-sm text-green">
+                  봉사 인증 완료 · 도착 {new Date(match.checkInAt).toLocaleString('ko-KR')}
+                  {match.checkOutAt &&
+                    ` · 종료 ${new Date(match.checkOutAt).toLocaleTimeString('ko-KR')}`}
+                </p>
+              )}
               {receivedReview && (
                 <div className="rounded-2xl border border-line bg-surface-alt p-4">
                   <p className="text-sm font-semibold text-ink-soft">받은 후기</p>
@@ -238,12 +245,19 @@ export default function MatchDetail({
                 </div>
                 <p className="text-center text-lg text-ink-soft">
                   봉사자가 도착하면 이 QR을 보여주세요.
+                  <br />
+                  <span className="text-sm">봉사자가 실제로 왔는지 인증하는 체크인용이에요.</span>
                 </p>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 rounded-2xl bg-green-tint px-4 py-6">
                 <Check className="text-green" />
                 <p className="text-base font-semibold text-green">봉사가 진행 중이에요.</p>
+                {match.checkInAt && (
+                  <p className="text-sm text-green">
+                    도착 인증 완료 · {new Date(match.checkInAt).toLocaleTimeString('ko-KR')}
+                  </p>
+                )}
               </div>
             )
           ) : scanning ? (
@@ -258,7 +272,7 @@ export default function MatchDetail({
               className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary py-4 text-lg font-bold text-white"
             >
               <Camera size={20} />
-              QR 스캔하고 시작하기
+              QR 스캔으로 도착 인증하기
             </button>
           ) : (
             <button

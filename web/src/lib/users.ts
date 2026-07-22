@@ -1,6 +1,12 @@
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { db } from './firebase'
-import type { GuardianContact } from '../types'
+import type { GuardianContact, UserProfile } from '../types'
+
+// 지원자 카드 등에서 다른 사용자의 프로필(온기지수 등)을 단건 조회
+export async function getUserProfile(uid: string) {
+  const snap = await getDoc(doc(db, 'users', uid))
+  return snap.exists() ? (snap.data() as UserProfile) : null
+}
 
 // 보호자 연락처 등록/수정 — 미인증(verified:false) 상태로 저장
 export async function saveGuardianContact(uid: string, name: string, phone: string) {

@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   query,
   runTransaction,
@@ -62,6 +63,14 @@ export function subscribeToMatchReviews(
     (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Review)),
     (error) => onError?.(error),
   )
+}
+
+// 특정 사용자가 받은 후기 단건 조회 (지원자 카드용)
+export async function getReviewsForUser(userId: string) {
+  const snap = await getDocs(query(reviewsRef, where('toUserId', '==', userId)))
+  const reviews = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Review)
+  reviews.sort((a, b) => b.createdAt - a.createdAt)
+  return reviews
 }
 
 // 특정 사용자가 받은 후기 목록 (프로필 표시용)

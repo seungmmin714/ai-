@@ -27,7 +27,15 @@ export function warmthTier(score: number): WarmthTier {
   return 'hot'
 }
 
-export type RequestCategory = 'labor' | 'digital' | 'errand' | 'safety'
+export type RequestCategory =
+  | 'labor'
+  | 'digital'
+  | 'errand'
+  | 'housework'
+  | 'companion'
+  | 'repair'
+  | 'safety'
+  | 'other'
 export type EstimatedDuration = 'short' | 'medium' | 'long'
 export type RequestFrequency = 'once' | 'recurring'
 export type RequestStatus = 'open' | 'matched' | 'in_progress' | 'completed' | 'cancelled'
@@ -36,7 +44,11 @@ export const CATEGORY_LABELS: Record<RequestCategory, string> = {
   labor: '힘쓰는 일',
   digital: '스마트폰/PC',
   errand: '심부름',
+  housework: '집안일',
+  companion: '말벗·동행',
+  repair: '간단 수리',
   safety: '안전 확인',
+  other: '기타',
 }
 
 export const DURATION_LABELS: Record<EstimatedDuration, string> = {
@@ -69,6 +81,7 @@ export interface HelpRequest {
   frequency: RequestFrequency
   sameGenderOnly: boolean
   requesterGender: Gender
+  neededVolunteers: number // 모집 인원 (기존 문서에는 없을 수 있어 사용처에서 ?? 1 처리)
   location: { lat: number; lng: number }
   status: RequestStatus
   createdAt: number

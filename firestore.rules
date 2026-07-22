@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// 핑동(여기잇다) MVP Firestore 보안 규칙
+// 로그인한 사용자에게 읽기/쓰기를 허용하는 최소 기준입니다.
+// (요청 상태 변경·후기로 상대방 온기지수 갱신 등 교차 사용자 쓰기가 많아
+//  MVP 단계에서는 인증만 확인합니다. 실서비스 전에는 컬렉션별로 세분화하세요.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // matches/{id}/messages 같은 하위 컬렉션까지 재귀적으로 모두 포함
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
