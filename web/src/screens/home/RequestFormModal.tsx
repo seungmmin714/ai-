@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { MapMarker } from 'react-kakao-maps-sdk'
-import { MapPin, X } from 'lucide-react'
+import { Camera, MapPin, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { createHelpRequest } from '../../lib/requests'
+import { uploadRequestPhoto } from '../../lib/photos'
 import KakaoMap from '../../components/map/KakaoMap'
 import { CATEGORY_ICON } from '../../components/categoryMeta'
 import {
@@ -37,8 +38,30 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [locationDenied, setLocationDenied] = useState(false)
+  const [photoFiles, setPhotoFiles] = useState<{ file: File; preview: string }[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // 미리보기 URL 정리 (언마운트 시)
+  const previewsRef = useRef<string[]>([])
+  previewsRef.current = photoFiles.map((p) => p.preview)
+  useEffect(() => () => previewsRef.current.forEach((u) => URL.revokeObjectURL(u)), [])
+
+  function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+    setPhotoFiles((prev) =>
+      [...prev, ...files.map((file) => ({ file, preview: URL.createObjectURL(file) }))].slice(0, 5),
+    )
+  }
+
+  function removePhoto(index: number) {
+    setPhotoFiles((prev) => {
+      URL.revokeObjectURL(prev[index].preview)
+      return prev.filter((_, i) => i !== index)
+    })
+  }
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -75,6 +98,10 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
     setError(null)
     setSubmitting(true)
     try {
+      const photoUrls: string[] = []
+      for (const p of photoFiles) {
+        photoUrls.push(await uploadRequestPhoto(user.uid, p.file))
+      }
       await createHelpRequest({
         requesterId: user.uid,
         requesterName: profile.name,
@@ -85,6 +112,7 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
         frequency,
         sameGenderOnly,
         neededVolunteers: needed,
+        photoUrls,
         location: location ?? DEFAULT_LOCATION,
       })
       onClose()
@@ -169,6 +197,44 @@ export default function RequestFormModal({ onClose }: { onClose: () => void }) {
               className="rounded-xl border border-line bg-surface px-4 py-3 text-lg"
               placeholder="예: 핸드폰 화면이 갑자기 안 켜져요. 연락처를 봐야 하는데 도와주세요."
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-lg font-semibold">사진 첨부 (선택)</span>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {photoFiles.map((p, i) => (
+                <div
+                  key={p.preview}
+                  className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-line"
+                >
+                  <img src={p.preview} alt="첨부 사진" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label="사진 삭제"
+                    onClick={() => removePhoto(i)}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {photoFiles.length < 5 && (
+                <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line-strong text-ink-soft">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
+                  <Camera size={20} />
+                  <span className="text-xs font-semibold">사진 추가</span>
+                </label>
+              )}
+            </div>
+            <p className="text-sm text-ink-soft">
+              현장 사진을 올리면 봉사자가 상황을 이해하기 쉬워요. (최대 5장)
+            </p>
           </div>
 
           <div className="flex flex-col gap-3">

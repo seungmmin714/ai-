@@ -29,6 +29,7 @@ interface CreateHelpRequestInput {
   frequency: RequestFrequency
   sameGenderOnly: boolean
   neededVolunteers: number
+  photoUrls: string[]
   location: { lat: number; lng: number }
 }
 
@@ -44,6 +45,7 @@ export async function createHelpRequest(input: CreateHelpRequestInput) {
     frequency: input.frequency,
     sameGenderOnly: input.sameGenderOnly,
     neededVolunteers: input.neededVolunteers,
+    photoUrls: input.photoUrls,
     location: input.location,
     status: 'open',
     createdAt: Date.now(),

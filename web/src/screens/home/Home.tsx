@@ -24,6 +24,7 @@ import {
 } from '../../lib/requests'
 import {
   applyToRequest,
+  subscribeToRequestMatches,
   subscribeToRequesterMatches,
   subscribeToVolunteerMatches,
 } from '../../lib/matches'
@@ -97,6 +98,15 @@ export default function Home() {
   const [openChatMatchId, setOpenChatMatchId] = useState<string | null>(null)
   const [manageRequestId, setManageRequestId] = useState<string | null>(null)
   const [nearOnly, setNearOnly] = useState(true)
+  const [selectedApps, setSelectedApps] = useState<Match[]>([])
+
+  // 상세로 연 요청의 지원/확정 현황 구독
+  const selectedId = selected?.id
+  useEffect(() => {
+    setSelectedApps([])
+    if (!selectedId) return
+    return subscribeToRequestMatches(selectedId, setSelectedApps)
+  }, [selectedId])
 
   // 처음 열 때 조용히 현재 위치를 잡아 지도·주변 필터에 사용
   useEffect(() => {
@@ -681,9 +691,31 @@ export default function Home() {
                 <X size={20} />
               </button>
             </div>
+            {(selected.photoUrls ?? []).length > 0 && (
+              <div className="mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto no-scrollbar">
+                {(selected.photoUrls ?? []).map((url) => (
+                  <img
+                    key={url}
+                    src={url}
+                    alt="요청 현장 사진"
+                    className={`h-44 shrink-0 snap-center rounded-2xl border border-line object-cover ${
+                      (selected.photoUrls ?? []).length === 1 ? 'w-full' : 'w-[80%]'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
             <p className="text-sm text-ink-soft">
               {selected.requesterName}님 · 예상 {DURATION_LABELS[selected.estimatedDuration]} · 모집{' '}
               {selected.neededVolunteers ?? 1}명
+            </p>
+            <p className="mt-1 text-sm font-semibold text-primary">
+              지원 {selectedApps.filter((m) => m.status === 'pending').length}명 대기 · 확정{' '}
+              {
+                selectedApps.filter((m) => m.status !== 'pending' && m.status !== 'reported')
+                  .length
+              }
+              /{selected.neededVolunteers ?? 1}명
             </p>
             <p className="mt-2 text-base">{selected.description}</p>
             {applyError && (

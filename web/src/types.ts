@@ -82,6 +82,7 @@ export interface HelpRequest {
   sameGenderOnly: boolean
   requesterGender: Gender
   neededVolunteers: number // 모집 인원 (기존 문서에는 없을 수 있어 사용처에서 ?? 1 처리)
+  photoUrls: string[] // 현장 사진 (기존 문서에는 없을 수 있어 사용처에서 ?? [] 처리)
   location: { lat: number; lng: number }
   status: RequestStatus
   createdAt: number
