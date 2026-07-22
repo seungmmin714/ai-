@@ -10,6 +10,7 @@ import {
   Plus,
   QrCode,
   Siren,
+  Store,
   User,
   Users,
   X,
@@ -28,6 +29,7 @@ import {
   subscribeToRequesterMatches,
   subscribeToVolunteerMatches,
 } from '../../lib/matches'
+import { subscribeToActivePromotions } from '../../lib/promotions'
 import MatchDetail from '../match/MatchDetail'
 import MyPage from '../mypage/MyPage'
 import ChatRoom from '../chat/ChatRoom'
@@ -41,6 +43,7 @@ import {
   STATUS_LABELS,
   type HelpRequest,
   type Match,
+  type Promotion,
   type RequestCategory,
   type UserRole,
 } from '../../types'
@@ -99,6 +102,11 @@ export default function Home() {
   const [manageRequestId, setManageRequestId] = useState<string | null>(null)
   const [nearOnly, setNearOnly] = useState(true)
   const [selectedApps, setSelectedApps] = useState<Match[]>([])
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null)
+  const [showProof, setShowProof] = useState(false)
+
+  useEffect(() => subscribeToActivePromotions(setPromotions), [])
 
   // 상세로 연 요청의 지원/확정 현황 구독
   const selectedId = selected?.id
@@ -162,6 +170,8 @@ export default function Home() {
   )
   const openChat = chatMatches.find((m) => m.id === openChatMatchId) ?? null
   const manageRequest = myRequests.find((r) => r.id === manageRequestId) ?? null
+  // 프로모션 혜택 조건: QR 인증을 거쳐 완료된 봉사 횟수
+  const completedVolunteering = volunteerMatches.filter((m) => m.status === 'completed')
 
   // 목록용: 내 위치 기준 1km 이내(가까운 순). 위치를 모르면 1km 모드에선 아무것도 표시하지 않는다.
   const listRequests = browseRequests
@@ -276,6 +286,27 @@ export default function Home() {
             <p className="mb-3 rounded-2xl bg-danger-tint px-4 py-3 text-sm text-danger">
               목록을 불러오지 못했습니다: {loadError}
             </p>
+          )}
+          {promotions.length > 0 && (
+            <div className="mb-4 flex flex-col gap-2">
+              <h3 className="text-sm font-bold text-ink-soft">동네 가게 혜택</h3>
+              {promotions.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelectedPromo(p)}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+                >
+                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-dark text-white">
+                    <Store size={18} />
+                  </span>
+                  <div className="min-w-0 flex-grow">
+                    <p className="font-bold">{p.shopName}</p>
+                    <p className="truncate text-sm text-ink-soft">{p.benefit}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
           {volunteerMatches.length > 0 && (
             <div className="mb-4 flex flex-col gap-2">
@@ -502,6 +533,24 @@ export default function Home() {
                     <span className="block h-4 w-4 rounded-full border-2 border-white bg-info shadow-[0_0_0_4px_rgba(107,143,196,0.35)]" />
                   </CustomOverlayMap>
                 )}
+                {mode === 'browse' &&
+                  promotions.map((p) => (
+                    <CustomOverlayMap key={p.id} position={p.location} clickable yAnchor={1}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPromo(p)}
+                        aria-label={`${p.shopName} 프로모션`}
+                        className="flex flex-col items-center active:scale-90"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-primary-dark text-white shadow-lg">
+                          <Store size={20} />
+                        </div>
+                        <span className="mt-1 whitespace-nowrap rounded-md bg-primary-dark px-1.5 py-0.5 text-[11px] font-bold text-white shadow">
+                          {p.shopName}
+                        </span>
+                      </button>
+                    </CustomOverlayMap>
+                  ))}
                 {mapRequests.map((r) => {
                   const Icon = CATEGORY_ICON[r.category]
                   const pin = (
@@ -757,6 +806,82 @@ export default function Home() {
         />
       )}
       {showCreate && <RequestFormModal onClose={() => setShowCreate(false)} />}
+
+      {selectedPromo && (
+        <div className="fixed inset-0 z-50 flex justify-center bg-black/40">
+          <div className="mt-auto w-full max-w-[430px] rounded-t-3xl bg-surface p-5">
+            <div className="mb-3 flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-dark text-white">
+                  <Store size={18} />
+                </span>
+                <div>
+                  <p className="text-lg font-bold">{selectedPromo.shopName}</p>
+                  <p className="text-xs text-ink-soft">동네 가게 프로모션</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPromo(null)}
+                aria-label="닫기"
+                className="min-h-12 min-w-12"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="rounded-2xl bg-primary-tint p-4">
+              <p className="text-lg font-bold text-primary">{selectedPromo.benefit}</p>
+              <p className="mt-1 text-sm text-ink-soft">
+                봉사를 1회 이상 완료한 이웃에게 드리는 혜택이에요.
+              </p>
+            </div>
+            {completedVolunteering.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowProof(true)}
+                className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-lg font-bold text-white"
+              >
+                <QrCode size={20} />
+                봉사 인증 보여주기
+              </button>
+            ) : (
+              <p className="mt-4 rounded-xl bg-surface-alt px-4 py-3 text-center text-base text-ink-soft">
+                아직 완료한 봉사가 없어요. 봉사를 완료하면 혜택을 받을 수 있어요.
+              </p>
+            )}
+          </div>
+
+          {showProof && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-6">
+              <div className="flex w-full max-w-[340px] flex-col items-center gap-3 rounded-3xl bg-surface p-6 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-green-tint text-green">
+                  <Heart size={26} />
+                </span>
+                <p className="text-xl font-bold">{profile?.name}님의 봉사 인증</p>
+                <p className="text-3xl font-extrabold text-primary">
+                  봉사 완료 {completedVolunteering.length}회
+                </p>
+                {completedVolunteering[0]?.checkOutAt && (
+                  <p className="text-sm text-ink-soft">
+                    최근 완료:{' '}
+                    {new Date(
+                      Math.max(...completedVolunteering.map((m) => m.checkOutAt ?? 0)),
+                    ).toLocaleDateString('ko-KR')}
+                  </p>
+                )}
+                <p className="text-sm text-ink-soft">사장님께 이 화면을 보여주세요.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowProof(false)}
+                  className="mt-1 min-h-12 w-full rounded-full border border-line text-base font-semibold text-ink-soft"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {showNotifications && (
         <div className="fixed inset-0 z-50" onClick={() => setShowNotifications(false)}>

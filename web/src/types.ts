@@ -7,6 +7,13 @@ export interface GuardianContact {
   verified: boolean
 }
 
+// 소상공인(가게) 계정 정보
+export interface ShopInfo {
+  shopName: string
+  photoUrl: string // 가게 인증 사진 (현재는 아무 사진이나 허용)
+  verified: boolean // NOTE(추후 과제): 관리자가 사진을 확인하고 승인하는 기능 도입 예정
+}
+
 export interface UserProfile {
   uid: string
   name: string
@@ -15,6 +22,8 @@ export interface UserProfile {
   gender: Gender
   warmthScore: number
   guardianContact?: GuardianContact
+  accountType?: 'personal' | 'shop' // 없으면 personal
+  shopInfo?: ShopInfo
   createdAt: number
 }
 
@@ -122,6 +131,19 @@ export interface Review {
   rating: number // 1~5
   comment: string
   createdAt: number
+}
+
+// 지역 상점 프로모션: 사장님이 비피크 시간대에 시작하면 지도에 노출되고,
+// 봉사를 완료(QR 인증)한 이웃이 가게에서 혜택을 받는다.
+export interface Promotion {
+  id: string
+  shopId: string
+  shopName: string
+  benefit: string // 예: "아메리카노 500원 할인", "사이드 메뉴 증정"
+  location: { lat: number; lng: number }
+  status: 'active' | 'ended'
+  createdAt: number
+  endedAt?: number
 }
 
 export interface ChatMessage {

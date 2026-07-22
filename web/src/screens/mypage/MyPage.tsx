@@ -1,6 +1,12 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { Camera, Plus, X } from 'lucide-react'
+import { Camera, Megaphone, Plus, Store, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { DEFAULT_CENTER } from '../../components/map/KakaoMap'
+import {
+  endPromotion,
+  startPromotion,
+  subscribeToShopPromotions,
+} from '../../lib/promotions'
 import WarmthBadge from '../../components/WarmthBadge'
 import StarRating from '../../components/StarRating'
 import { subscribeToReviewsForUser } from '../../lib/reviews'
@@ -11,7 +17,7 @@ import {
   uploadActivityPhoto,
   type ActivityPhoto,
 } from '../../lib/photos'
-import type { GuardianContact, Review } from '../../types'
+import type { GuardianContact, Promotion, Review, ShopInfo } from '../../types'
 
 export default function MyPage() {
   const { user, profile, logOut } = useAuth()
@@ -67,6 +73,8 @@ export default function MyPage() {
             )}
           </section>
 
+          {profile.shopInfo && <ShopSection uid={profile.uid} shop={profile.shopInfo} />}
+
           <PhotosSection uid={profile.uid} />
 
           {/* 역할 구분 없는 통합 홈이라 보호자 연동은 모두에게 노출 (선택 항목) */}
@@ -81,6 +89,124 @@ export default function MyPage() {
           </button>
         </div>
       </div>
+  )
+}
+
+// 소상공인 가게 관리: 인증 상태 확인 + 프로모션 시작/종료
+function ShopSection({ uid, shop }: { uid: string; shop: ShopInfo }) {
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [benefit, setBenefit] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => subscribeToShopPromotions(uid, setPromotions), [uid])
+
+  const active = promotions.find((p) => p.status === 'active') ?? null
+
+  async function handleStart() {
+    if (!benefit.trim()) {
+      setError('혜택 내용을 입력해주세요. 예: 사이드 메뉴 증정')
+      return
+    }
+    setError(null)
+    setBusy(true)
+    // 프로모션 위치 = 현재 위치(가게에서 누른다고 가정), 실패 시 기본 위치
+    const location = await new Promise<{ lat: number; lng: number }>((resolve) => {
+      if (!navigator.geolocation) return resolve(DEFAULT_CENTER)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(DEFAULT_CENTER),
+        { timeout: 5000 },
+      )
+    })
+    try {
+      await startPromotion({ shopId: uid, shopName: shop.shopName, benefit: benefit.trim(), location })
+      setBenefit('')
+    } catch {
+      setError('프로모션 시작에 실패했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleEnd() {
+    if (!active) return
+    setBusy(true)
+    try {
+      await endPromotion(active.id)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 text-lg font-semibold">
+        <Store size={20} />내 가게
+      </h2>
+      <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+        <div className="flex items-center gap-3">
+          <img
+            src={shop.photoUrl}
+            alt="가게 사진"
+            className="h-14 w-14 rounded-xl border border-line object-cover"
+          />
+          <div className="min-w-0 flex-grow">
+            <p className="text-lg font-bold">{shop.shopName}</p>
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                shop.verified ? 'bg-green-tint text-green' : 'bg-surface-alt text-ink-soft'
+              }`}
+            >
+              {shop.verified ? '인증된 가게' : '승인 대기 중'}
+            </span>
+          </div>
+        </div>
+
+        {active ? (
+          <div className="flex flex-col gap-2 rounded-xl bg-primary-tint p-3">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-primary">
+              <Megaphone size={16} />
+              프로모션 진행 중 — 지도에 노출되고 있어요
+            </p>
+            <p className="text-base font-semibold">{active.benefit}</p>
+            <button
+              type="button"
+              onClick={handleEnd}
+              disabled={busy}
+              className="min-h-12 rounded-full border border-primary text-base font-bold text-primary disabled:opacity-60"
+            >
+              {busy ? '처리 중...' : '프로모션 종료'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-ink-soft">
+              손님이 뜸한 시간에 프로모션을 시작해보세요. 봉사를 완료한 이웃이 혜택을 받으러
+              찾아와요.
+            </p>
+            <input
+              value={benefit}
+              onChange={(e) => setBenefit(e.target.value)}
+              placeholder="혜택 내용 (예: 사이드 메뉴 증정)"
+              className="min-h-12 rounded-xl border border-line px-4 text-base"
+            />
+            <button
+              type="button"
+              onClick={handleStart}
+              disabled={busy}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-white disabled:opacity-60"
+            >
+              <Megaphone size={18} />
+              {busy ? '시작 중...' : '프로모션 시작'}
+            </button>
+          </div>
+        )}
+        {error && (
+          <p className="rounded-xl bg-danger-tint px-4 py-3 text-sm text-danger">{error}</p>
+        )}
+      </div>
+    </section>
   )
 }
 

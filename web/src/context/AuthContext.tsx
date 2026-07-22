@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
+import { uploadShopPhoto } from '../lib/photos'
 import type { Gender, UserProfile } from '../types'
 
 interface SignUpInput {
@@ -21,6 +22,9 @@ interface SignUpInput {
   email: string
   password: string
   gender: Gender
+  // 소상공인 가입 시에만 전달
+  shopName?: string
+  shopPhoto?: File
 }
 
 interface AuthContextValue {
@@ -65,10 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  async function signUp({ name, email, password, gender }: SignUpInput) {
+  async function signUp({ name, email, password, gender, shopName, shopPhoto }: SignUpInput) {
     const credential = await createUserWithEmailAndPassword(auth, email, password)
-    const newProfile: UserProfile = {
-      uid: credential.user.uid,
+    const uid = credential.user.uid
+    let newProfile: UserProfile = {
+      uid,
       name,
       email,
       // 통합 홈으로 역할 구분이 없어져 가입 시 선택하지 않는다 (기존 데이터 호환용 기본값)
@@ -77,7 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       warmthScore: 36.5,
       createdAt: Date.now(),
     }
-    await setDoc(doc(db, 'users', credential.user.uid), newProfile)
+    if (shopName && shopPhoto) {
+      // 가게 인증 사진: 현재는 아무 사진이든 등록 가능.
+      // NOTE(추후 과제): 관리자가 사진을 검토해 verified를 승인하는 기능 도입 예정
+      const photoUrl = await uploadShopPhoto(uid, shopPhoto)
+      newProfile = {
+        ...newProfile,
+        accountType: 'shop',
+        shopInfo: { shopName, photoUrl, verified: false },
+      }
+    }
+    await setDoc(doc(db, 'users', uid), newProfile)
     setProfile(newProfile)
   }
 
