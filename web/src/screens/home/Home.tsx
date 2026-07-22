@@ -56,6 +56,24 @@ const FILTER_CHIPS: { value: CategoryFilter; label: string }[] = [
   })),
 ]
 
+// '내 주변의 활발한 활동' 목록 반경 (지도에는 전국 요청을 모두 표시)
+const NEARBY_RADIUS_M = 1000
+
+function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371000
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(s))
+}
+
+function formatDistance(m: number) {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`
+}
+
 export default function Home() {
   const { profile } = useAuth()
   const uid = profile?.uid
@@ -78,6 +96,21 @@ export default function Home() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [openChatMatchId, setOpenChatMatchId] = useState<string | null>(null)
   const [manageRequestId, setManageRequestId] = useState<string | null>(null)
+  const [nearOnly, setNearOnly] = useState(true)
+
+  // 처음 열 때 조용히 현재 위치를 잡아 지도·주변 필터에 사용
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setMyLocation(loc)
+        setCenter(loc)
+      },
+      () => {},
+      { timeout: 8000 },
+    )
+  }, [])
 
   useEffect(() => {
     const gender = profile?.gender
@@ -115,6 +148,15 @@ export default function Home() {
   const chatMatches = allMatches.filter((m) => m.status !== 'pending')
   const openChat = chatMatches.find((m) => m.id === openChatMatchId) ?? null
   const manageRequest = myRequests.find((r) => r.id === manageRequestId) ?? null
+
+  // 목록용: 내 위치 기준 1km 이내(가까운 순). 위치를 모르면 전체 표시.
+  const listRequests = browseRequests
+    .map((r) => ({
+      request: r,
+      distance: myLocation ? distanceMeters(myLocation, r.location) : null,
+    }))
+    .filter((x) => !nearOnly || x.distance === null || x.distance <= NEARBY_RADIUS_M)
+    .sort((a, b) => (a.distance ?? Number.MAX_VALUE) - (b.distance ?? Number.MAX_VALUE))
 
   // 알림은 별도 컬렉션 없이 내 매칭 상태에서 파생한다.
   // requestId가 있으면 탭 시 지원자 관리 화면, 없으면 매칭 상세로 이동.
@@ -166,6 +208,14 @@ export default function Home() {
     )
   }
 
+  // 목록에서 활동을 누르면 지도 탭으로 이동해 위치를 보여준다
+  function goToRequest(r: HelpRequest) {
+    setSelected(r)
+    setCenter(r.location)
+    setSheetOpen(false)
+    setTab('map')
+  }
+
   async function handleApply(request: HelpRequest) {
     if (!profile) return
     setApplyError(null)
@@ -185,7 +235,34 @@ export default function Home() {
     if (mode === 'browse') {
       return (
         <>
-          <h2 className="mb-3 text-xl font-bold">내 주변의 활발한 활동</h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-xl font-bold">내 주변의 활발한 활동</h2>
+            <div className="flex shrink-0 rounded-full border border-line bg-surface p-0.5">
+              <button
+                type="button"
+                onClick={() => setNearOnly(true)}
+                className={`min-h-9 rounded-full px-3 text-xs font-bold ${
+                  nearOnly ? 'bg-primary text-white' : 'text-ink-soft'
+                }`}
+              >
+                1km
+              </button>
+              <button
+                type="button"
+                onClick={() => setNearOnly(false)}
+                className={`min-h-9 rounded-full px-3 text-xs font-bold ${
+                  !nearOnly ? 'bg-primary text-white' : 'text-ink-soft'
+                }`}
+              >
+                전체
+              </button>
+            </div>
+          </div>
+          {nearOnly && !myLocation && (
+            <p className="mb-3 rounded-xl bg-surface-alt px-4 py-2 text-sm text-ink-soft">
+              위치 권한을 허용하면 1km 이내 활동만 골라 보여드려요.
+            </p>
+          )}
           {loadError && (
             <p className="mb-3 rounded-2xl bg-danger-tint px-4 py-3 text-sm text-danger">
               목록을 불러오지 못했습니다: {loadError}
@@ -212,19 +289,21 @@ export default function Home() {
               ))}
             </div>
           )}
-          {browseRequests.length === 0 ? (
+          {listRequests.length === 0 ? (
             <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-base text-ink-soft">
-              주변에 등록된 요청이 없어요.
+              {nearOnly && myLocation
+                ? '1km 이내에 등록된 활동이 없어요. 전체로 바꾸면 다른 지역 활동도 볼 수 있어요.'
+                : '주변에 등록된 요청이 없어요.'}
             </p>
           ) : (
             <div className="flex flex-col gap-3">
-              {browseRequests.map((r) => {
+              {listRequests.map(({ request: r, distance }) => {
                 const Icon = CATEGORY_ICON[r.category]
                 return (
                   <button
                     key={r.id}
                     type="button"
-                    onClick={() => setSelected(r)}
+                    onClick={() => goToRequest(r)}
                     className="flex gap-3 rounded-2xl border border-line bg-surface-alt p-4 text-left"
                   >
                     <div
@@ -236,14 +315,18 @@ export default function Home() {
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-bold">{CATEGORY_LABELS[r.category]}</h3>
                         <span className="whitespace-nowrap text-xs font-semibold text-ink-soft">
-                          {FREQUENCY_LABELS[r.frequency]} · {DURATION_LABELS[r.estimatedDuration]} ·
-                          모집 {r.neededVolunteers ?? 1}명
+                          {distance !== null && (
+                            <span className="font-bold text-primary">
+                              {formatDistance(distance)} ·{' '}
+                            </span>
+                          )}
+                          {DURATION_LABELS[r.estimatedDuration]} · 모집 {r.neededVolunteers ?? 1}명
                         </span>
                       </div>
                       <p className="mt-1 line-clamp-2 text-sm text-ink-soft">{r.description}</p>
                       <span className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary">
                         <Heart size={14} />
-                        참여하기
+                        지도에서 보기 · 참여하기
                       </span>
                     </div>
                   </button>

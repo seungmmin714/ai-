@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// 핑동(여기잇다) MVP Storage 보안 규칙 — 로그인한 사용자에게 읽기/쓰기 허용.
+// Firebase 콘솔 > Storage > 규칙 탭에 붙여넣고 게시하세요.
+// (활동 사진은 activityPhotos/{uid}/... 경로에 저장됩니다)
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

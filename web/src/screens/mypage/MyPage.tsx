@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { Camera, Plus, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import WarmthBadge from '../../components/WarmthBadge'
 import StarRating from '../../components/StarRating'
 import { subscribeToReviewsForUser } from '../../lib/reviews'
 import { saveGuardianContact, verifyGuardianContact } from '../../lib/users'
+import {
+  deleteActivityPhoto,
+  subscribeToActivityPhotos,
+  uploadActivityPhoto,
+  type ActivityPhoto,
+} from '../../lib/photos'
 import type { GuardianContact, Review } from '../../types'
 
 export default function MyPage() {
@@ -62,6 +69,8 @@ export default function MyPage() {
             )}
           </section>
 
+          <PhotosSection uid={profile.uid} />
+
           {profile.role === 'recipient' && (
             <GuardianSection uid={profile.uid} guardian={profile.guardianContact} />
           )}
@@ -75,6 +84,76 @@ export default function MyPage() {
           </button>
         </div>
       </div>
+  )
+}
+
+// 함께한 봉사의 순간을 기록하는 활동 사진첩
+function PhotosSection({ uid }: { uid: string }) {
+  const [photos, setPhotos] = useState<ActivityPhoto[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => subscribeToActivityPhotos(uid, setPhotos), [uid])
+
+  async function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setError(null)
+    setUploading(true)
+    try {
+      await uploadActivityPhoto(uid, file)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '사진을 올리지 못했어요.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="flex items-center gap-2 text-lg font-semibold">
+        <Camera size={20} />
+        활동 사진
+      </h2>
+      {error && (
+        <p className="rounded-xl bg-danger-tint px-4 py-3 text-sm text-danger">{error}</p>
+      )}
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map((p) => (
+          <div
+            key={p.id}
+            className="relative aspect-square overflow-hidden rounded-xl border border-line"
+          >
+            <img src={p.url} alt="활동 사진" className="h-full w-full object-cover" />
+            <button
+              type="button"
+              aria-label="사진 삭제"
+              onClick={() => deleteActivityPhoto(uid, p)}
+              className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+        <label
+          className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line-strong text-ink-soft ${
+            uploading ? 'opacity-60' : ''
+          }`}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFile}
+            disabled={uploading}
+          />
+          <Plus size={22} />
+          <span className="text-xs font-semibold">{uploading ? '올리는 중...' : '사진 추가'}</span>
+        </label>
+      </div>
+      <p className="text-sm text-ink-soft">함께한 봉사의 순간을 기록해보세요.</p>
+    </section>
   )
 }
 
