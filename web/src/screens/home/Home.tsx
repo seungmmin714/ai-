@@ -475,9 +475,8 @@ export default function Home() {
   return (
     <div className="flex h-dvh flex-col bg-bg">
       <header className="z-20 flex shrink-0 items-center justify-between bg-surface px-5 py-3 shadow-sm">
-        <h1 className="flex items-center gap-2">
+        <h1>
           <img src={logo} alt="여기잇다" className="h-11 w-auto rounded-lg" />
-          <span className="text-xl font-extrabold text-primary">여기잇다</span>
         </h1>
         <div className="flex items-center gap-1">
           <button
@@ -852,6 +851,11 @@ export default function Home() {
             )}
             <div className="rounded-2xl bg-primary-tint p-4">
               <p className="text-lg font-bold text-primary">{selectedPromo.benefit}</p>
+              {selectedPromo.timeFrom && selectedPromo.timeTo && (
+                <p className="mt-1 text-sm font-semibold text-primary">
+                  혜택 시간 {selectedPromo.timeFrom} ~ {selectedPromo.timeTo}
+                </p>
+              )}
               <p className="mt-1 text-sm text-ink-soft">
                 봉사를 1회 이상 완료한 이웃에게 드리는 혜택이에요.
               </p>

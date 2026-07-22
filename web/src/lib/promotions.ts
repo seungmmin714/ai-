@@ -12,12 +12,17 @@ import type { Promotion } from '../types'
 
 const promotionsRef = collection(db, 'promotions')
 
-interface StartPromotionInput {
-  shopId: string
-  shopName: string
+interface PromotionContentInput {
   benefit: string
+  timeFrom: string // '' 이면 시간대 미지정
+  timeTo: string
   photoUrls: string[]
   location: { lat: number; lng: number }
+}
+
+interface StartPromotionInput extends PromotionContentInput {
+  shopId: string
+  shopName: string
 }
 
 // 사장님이 프로모션 시작 → 지도에 노출
@@ -26,12 +31,19 @@ export async function startPromotion(input: StartPromotionInput) {
     shopId: input.shopId,
     shopName: input.shopName,
     benefit: input.benefit,
+    timeFrom: input.timeFrom,
+    timeTo: input.timeTo,
     photoUrls: input.photoUrls,
     location: input.location,
     status: 'active',
     createdAt: Date.now(),
   }
   await addDoc(promotionsRef, newPromotion)
+}
+
+// 진행 중인 프로모션 내용 수정 (혜택·시간대·사진·위치)
+export async function updatePromotion(promotionId: string, data: PromotionContentInput) {
+  await updateDoc(doc(db, 'promotions', promotionId), { ...data })
 }
 
 export async function endPromotion(promotionId: string) {
