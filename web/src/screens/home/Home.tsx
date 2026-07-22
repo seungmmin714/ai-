@@ -30,6 +30,7 @@ import {
   subscribeToVolunteerMatches,
 } from '../../lib/matches'
 import { subscribeToActivePromotions } from '../../lib/promotions'
+import logo from '../../assets/logo.jpg'
 import MatchDetail from '../match/MatchDetail'
 import MyPage from '../mypage/MyPage'
 import ChatRoom from '../chat/ChatRoom'
@@ -474,7 +475,10 @@ export default function Home() {
   return (
     <div className="flex h-dvh flex-col bg-bg">
       <header className="z-20 flex shrink-0 items-center justify-between bg-surface px-5 py-3 shadow-sm">
-        <h1 className="text-2xl font-extrabold text-primary">여기잇다</h1>
+        <h1 className="flex items-center gap-2">
+          <img src={logo} alt="여기잇다" className="h-11 w-auto rounded-lg" />
+          <span className="text-xl font-extrabold text-primary">여기잇다</span>
+        </h1>
         <div className="flex items-center gap-1">
           <button
             type="button"

@@ -11,6 +11,7 @@ import {
 } from '../../lib/promotions'
 import { uploadPromotionPhoto } from '../../lib/photos'
 import MyPage from '../mypage/MyPage'
+import logo from '../../assets/logo.jpg'
 import type { Promotion } from '../../types'
 
 type Tab = 'map' | 'promo' | 'profile'
@@ -119,7 +120,10 @@ export default function ShopHome() {
   return (
     <div className="flex h-dvh flex-col bg-bg">
       <header className="z-20 flex shrink-0 items-center justify-between bg-surface px-5 py-3 shadow-sm">
-        <h1 className="text-2xl font-extrabold text-primary">여기잇다</h1>
+        <h1 className="flex items-center gap-2">
+          <img src={logo} alt="여기잇다" className="h-11 w-auto rounded-lg" />
+          <span className="text-xl font-extrabold text-primary">여기잇다</span>
+        </h1>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-primary-tint px-3 py-1 text-xs font-bold text-primary">
             사장님

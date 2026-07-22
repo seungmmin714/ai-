@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Camera, Store, User } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import logo from '../../assets/logo.jpg'
 import type { Gender } from '../../types'
 
 type AccountKind = 'personal' | 'shop'
@@ -58,8 +59,8 @@ export default function SignUpScreen({ onSwitchToLogin }: { onSwitchToLogin: () 
 
   return (
     <div className="flex min-h-dvh flex-col gap-6 p-5">
-      <header>
-        <h1 className="text-2xl font-bold text-primary">여기잇다</h1>
+      <header className="flex flex-col items-center pt-2">
+        <img src={logo} alt="여기잇다" className="h-24 w-auto" />
         <p className="mt-1 text-base text-ink-soft">회원가입</p>
       </header>
 

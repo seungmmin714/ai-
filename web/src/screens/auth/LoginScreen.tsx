@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import logo from '../../assets/logo.jpg'
 
 export default function LoginScreen({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
   const { logIn } = useAuth()
@@ -23,9 +24,9 @@ export default function LoginScreen({ onSwitchToSignUp }: { onSwitchToSignUp: ()
 
   return (
     <div className="flex min-h-dvh flex-col gap-6 p-5">
-      <header>
-        <h1 className="text-2xl font-bold text-primary">여기잇다</h1>
-        <p className="mt-1 text-base text-ink-soft">로그인</p>
+      <header className="flex flex-col items-center pt-6">
+        <img src={logo} alt="여기잇다" className="h-36 w-auto" />
+        <p className="mt-2 text-base text-ink-soft">사람을 잇다, 마음을 잇다</p>
       </header>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
