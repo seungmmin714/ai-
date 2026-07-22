@@ -140,6 +140,7 @@ export interface Promotion {
   shopId: string
   shopName: string
   benefit: string // 예: "아메리카노 500원 할인", "사이드 메뉴 증정"
+  photoUrls: string[] // 홍보 사진 (기존 문서에는 없을 수 있어 사용처에서 ?? [] 처리)
   location: { lat: number; lng: number }
   status: 'active' | 'ended'
   createdAt: number

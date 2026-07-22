@@ -56,6 +56,15 @@ export async function uploadShopPhoto(uid: string, file: File) {
   return getDownloadURL(storageRef)
 }
 
+// 프로모션 홍보 사진 업로드 → 다운로드 URL 반환
+export async function uploadPromotionPhoto(uid: string, file: File) {
+  const blob = await compressImage(file)
+  const path = `promotionPhotos/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+  const storageRef = ref(storage, path)
+  await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' })
+  return getDownloadURL(storageRef)
+}
+
 // 도움 요청에 첨부하는 현장 사진 업로드 → 다운로드 URL 반환
 export async function uploadRequestPhoto(uid: string, file: File) {
   const blob = await compressImage(file)

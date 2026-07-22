@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginScreen from './screens/auth/LoginScreen'
 import SignUpScreen from './screens/auth/SignUpScreen'
 import Home from './screens/home/Home'
+import ShopHome from './screens/home/ShopHome'
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth()
@@ -20,7 +21,8 @@ function AppRoutes() {
     )
   }
 
-  return <Home />
+  // 소상공인 계정은 프로모션 전용 홈으로
+  return profile.shopInfo ? <ShopHome /> : <Home />
 }
 
 function App() {

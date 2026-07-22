@@ -542,10 +542,13 @@ export default function Home() {
                         aria-label={`${p.shopName} 프로모션`}
                         className="flex flex-col items-center active:scale-90"
                       >
+                        <span className="mb-1 rounded-full bg-star px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                          프로모션중!
+                        </span>
                         <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-primary-dark text-white shadow-lg">
                           <Store size={20} />
                         </div>
-                        <span className="mt-1 whitespace-nowrap rounded-md bg-primary-dark px-1.5 py-0.5 text-[11px] font-bold text-white shadow">
+                        <span className="mt-1 whitespace-nowrap rounded-md bg-white px-1.5 py-0.5 text-[11px] font-bold text-ink shadow">
                           {p.shopName}
                         </span>
                       </button>
@@ -829,6 +832,20 @@ export default function Home() {
                 <X size={20} />
               </button>
             </div>
+            {(selectedPromo.photoUrls ?? []).length > 0 && (
+              <div className="mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto no-scrollbar">
+                {(selectedPromo.photoUrls ?? []).map((url) => (
+                  <img
+                    key={url}
+                    src={url}
+                    alt="프로모션 사진"
+                    className={`h-40 shrink-0 snap-center rounded-2xl border border-line object-cover ${
+                      (selectedPromo.photoUrls ?? []).length === 1 ? 'w-full' : 'w-[80%]'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
             <div className="rounded-2xl bg-primary-tint p-4">
               <p className="text-lg font-bold text-primary">{selectedPromo.benefit}</p>
               <p className="mt-1 text-sm text-ink-soft">

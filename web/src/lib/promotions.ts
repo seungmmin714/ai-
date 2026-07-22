@@ -16,6 +16,7 @@ interface StartPromotionInput {
   shopId: string
   shopName: string
   benefit: string
+  photoUrls: string[]
   location: { lat: number; lng: number }
 }
 
@@ -25,6 +26,7 @@ export async function startPromotion(input: StartPromotionInput) {
     shopId: input.shopId,
     shopName: input.shopName,
     benefit: input.benefit,
+    photoUrls: input.photoUrls,
     location: input.location,
     status: 'active',
     createdAt: Date.now(),
