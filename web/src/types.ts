@@ -74,9 +74,10 @@ export interface HelpRequest {
   createdAt: number
 }
 
-export type MatchStatus = 'confirmed' | 'in_progress' | 'completed' | 'reported'
+export type MatchStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'reported'
 
 export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
+  pending: '수락 대기',
   confirmed: '매칭 완료',
   in_progress: '진행 중',
   completed: '봉사 완료',
@@ -106,6 +107,14 @@ export interface Review {
   toUserId: string
   rating: number // 1~5
   comment: string
+  createdAt: number
+}
+
+export interface ChatMessage {
+  id: string
+  senderId: string
+  senderName: string
+  text: string
   createdAt: number
 }
 

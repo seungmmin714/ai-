@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import QrScanner from '../../components/qr/QrScanner'
 import StarRating from '../../components/StarRating'
 import ReportModal from '../../components/ReportModal'
-import { checkInMatch, completeMatch } from '../../lib/matches'
+import { acceptMatch, checkInMatch, completeMatch, declineMatch } from '../../lib/matches'
 import { submitReview, subscribeToMatchReviews } from '../../lib/reviews'
 import {
   CATEGORY_LABELS,
@@ -71,6 +71,31 @@ export default function MatchDetail({
     }
   }
 
+  async function handleAccept() {
+    setError(null)
+    setSubmitting(true)
+    try {
+      await acceptMatch(match.id)
+    } catch {
+      setError('수락에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDecline() {
+    setError(null)
+    setSubmitting(true)
+    try {
+      await declineMatch(match.id, match.requestId)
+      onClose()
+    } catch {
+      setError('처리에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function handleSubmitReview() {
     if (!profile) return
     if (rating === 0) {
@@ -116,10 +141,50 @@ export default function MatchDetail({
           <p className="text-base text-ink-soft">
             {isVolunteer
               ? `${match.requesterName}님의 요청이에요.`
-              : `봉사자 ${match.volunteerName}님과 매칭되었어요.`}
+              : match.status === 'pending'
+                ? `${match.volunteerName}님의 참여 신청이 도착했어요.`
+                : `봉사자 ${match.volunteerName}님과 매칭되었어요.`}
           </p>
 
-          {match.status === 'reported' ? (
+          {match.status === 'pending' ? (
+            isVolunteer ? (
+              <div className="flex flex-col items-center gap-3 rounded-2xl bg-surface-alt px-4 py-6 text-center">
+                <p className="text-base font-semibold">요청자의 수락을 기다리는 중이에요.</p>
+                <button
+                  type="button"
+                  onClick={handleDecline}
+                  disabled={submitting}
+                  className="min-h-12 w-full rounded-full border border-line text-base font-semibold text-ink-soft disabled:opacity-60"
+                >
+                  {submitting ? '처리 중...' : '신청 취소'}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <p className="text-base">
+                  <b>{match.volunteerName}</b>님이 이 요청에 참여를 신청했어요.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDecline}
+                    disabled={submitting}
+                    className="min-h-12 flex-1 rounded-full border border-line text-base font-semibold text-ink-soft disabled:opacity-60"
+                  >
+                    거절
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAccept}
+                    disabled={submitting}
+                    className="min-h-12 flex-1 rounded-full bg-primary text-base font-bold text-white disabled:opacity-60"
+                  >
+                    {submitting ? '처리 중...' : '수락하기'}
+                  </button>
+                </div>
+              </div>
+            )
+          ) : match.status === 'reported' ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl bg-danger-tint px-4 py-6">
               <p className="text-base font-semibold text-danger">
                 신고 접수로 일시중지된 매칭이에요.
@@ -211,7 +276,7 @@ export default function MatchDetail({
             <p className="rounded-xl bg-danger-tint px-4 py-3 text-base text-danger">{error}</p>
           )}
 
-          {match.status !== 'reported' && (
+          {match.status !== 'pending' && match.status !== 'reported' && (
             <button
               type="button"
               onClick={() => setShowReport(true)}

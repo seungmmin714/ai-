@@ -7,6 +7,7 @@ import {
   List,
   LocateFixed,
   Map as MapIcon,
+  MessageCircle,
   Plus,
   QrCode,
   ShieldCheck,
@@ -17,7 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import KakaoMap from '../../components/map/KakaoMap'
+import KakaoMap, { DEFAULT_CENTER } from '../../components/map/KakaoMap'
 import {
   cancelHelpRequest,
   subscribeToMyRequests,
@@ -30,6 +31,7 @@ import {
 } from '../../lib/matches'
 import MatchDetail from '../match/MatchDetail'
 import MyPage from '../mypage/MyPage'
+import ChatRoom from '../chat/ChatRoom'
 import RequestFormModal from './RequestFormModal'
 import {
   CATEGORY_LABELS,
@@ -57,7 +59,7 @@ const CATEGORY_PIN_CLASS: Record<RequestCategory, string> = {
   safety: 'bg-danger',
 }
 
-type Tab = 'map' | 'list' | 'sos' | 'profile'
+type Tab = 'map' | 'list' | 'chat' | 'sos' | 'profile'
 type Mode = 'browse' | 'mine'
 type CategoryFilter = RequestCategory | 'all'
 
@@ -86,6 +88,10 @@ export default function Home() {
   const [applyError, setApplyError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [center, setCenter] = useState(DEFAULT_CENTER)
+  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [openChatMatchId, setOpenChatMatchId] = useState<string | null>(null)
 
   useEffect(() => {
     const gender = profile?.gender
@@ -117,6 +123,53 @@ export default function Home() {
     selectedMatch && selectedMatch.volunteerId === uid ? 'volunteer' : 'recipient'
   const mapRequests =
     mode === 'browse' ? browseRequests : myRequests.filter((r) => r.status !== 'cancelled')
+  const chatMatches = allMatches.filter((m) => m.status !== 'pending')
+  const openChat = chatMatches.find((m) => m.id === openChatMatchId) ?? null
+
+  // 알림은 별도 컬렉션 없이 내 매칭 상태에서 파생한다
+  const notifications = [
+    ...requesterMatches
+      .filter((m) => m.status === 'pending')
+      .map((m) => ({
+        id: `pend-${m.id}`,
+        matchId: m.id,
+        text: `${m.volunteerName}님이 회원님의 ${CATEGORY_LABELS[m.category]} 요청에 참여 신청했어요. 수락해주세요.`,
+      })),
+    ...volunteerMatches
+      .filter((m) => m.status === 'confirmed')
+      .map((m) => ({
+        id: `acc-${m.id}`,
+        matchId: m.id,
+        text: `${m.requesterName}님이 회원님의 ${CATEGORY_LABELS[m.category]} 봉사 신청을 수락했어요!`,
+      })),
+    ...allMatches
+      .filter((m) => m.status === 'completed')
+      .map((m) => ({
+        id: `done-${m.id}`,
+        matchId: m.id,
+        text: `${CATEGORY_LABELS[m.category]} 봉사가 완료되었어요. 후기를 남겨보세요.`,
+      })),
+    ...allMatches
+      .filter((m) => m.status === 'reported')
+      .map((m) => ({
+        id: `rep-${m.id}`,
+        matchId: m.id,
+        text: '신고 접수로 일시중지된 매칭이 있어요.',
+      })),
+  ]
+
+  function locateMe() {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setMyLocation(loc)
+        setCenter(loc)
+      },
+      () => setLoadError('위치 권한을 확인해주세요.'),
+      { enableHighAccuracy: true, timeout: 8000 },
+    )
+  }
 
   async function handleApply(request: HelpRequest) {
     if (!profile) return
@@ -125,6 +178,7 @@ export default function Home() {
     try {
       await applyToRequest(request, profile)
       setSelected(null)
+      // 신청은 '수락 대기' 상태. 요청자가 수락하면 채팅·QR이 열린다.
     } catch (err) {
       setApplyError(err instanceof Error ? err.message : '참여에 실패했어요.')
     } finally {
@@ -258,7 +312,7 @@ export default function Home() {
                         className="flex min-h-12 flex-1 items-center justify-center gap-1 rounded-full bg-primary text-base font-bold text-white"
                       >
                         <QrCode size={16} />
-                        매칭 보기
+                        {match.status === 'pending' ? '신청 수락하기' : '매칭 보기'}
                       </button>
                     )}
                   </div>
@@ -278,10 +332,14 @@ export default function Home() {
         <div className="flex items-center gap-1">
           <button
             type="button"
+            onClick={() => setShowNotifications(true)}
             aria-label="알림"
-            className="flex h-12 w-12 items-center justify-center rounded-full text-ink active:scale-90"
+            className="relative flex h-12 w-12 items-center justify-center rounded-full text-ink active:scale-90"
           >
             <Bell size={22} />
+            {notifications.length > 0 && (
+              <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-danger" />
+            )}
           </button>
           <button
             type="button"
@@ -323,7 +381,12 @@ export default function Home() {
         {tab === 'map' && (
           <>
             <div className="absolute inset-0">
-              <KakaoMap>
+              <KakaoMap center={center}>
+                {myLocation && (
+                  <CustomOverlayMap position={myLocation} xAnchor={0.5} yAnchor={0.5}>
+                    <span className="block h-4 w-4 rounded-full border-2 border-white bg-info shadow-[0_0_0_4px_rgba(107,143,196,0.35)]" />
+                  </CustomOverlayMap>
+                )}
                 {mapRequests.map((r) => {
                   const Icon = CATEGORY_ICON[r.category]
                   const pin = (
@@ -383,6 +446,7 @@ export default function Home() {
 
             <button
               type="button"
+              onClick={locateMe}
               aria-label="현재 위치"
               className={`absolute bottom-40 left-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-surface text-ink shadow-lg active:scale-90 ${
                 sheetOpen ? 'hidden' : ''
@@ -413,6 +477,49 @@ export default function Home() {
 
         {tab === 'list' && <div className="h-full overflow-y-auto p-5">{renderModeBody()}</div>}
 
+        {tab === 'chat' &&
+          (openChat ? (
+            <ChatRoom
+              match={openChat}
+              currentUserId={uid ?? ''}
+              currentUserName={profile?.name ?? ''}
+              onBack={() => setOpenChatMatchId(null)}
+            />
+          ) : (
+            <div className="h-full overflow-y-auto p-5">
+              <h2 className="mb-3 text-xl font-bold">채팅</h2>
+              {chatMatches.length === 0 ? (
+                <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-base text-ink-soft">
+                  아직 채팅방이 없어요. 참여 신청이 수락되면 채팅이 열려요.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {chatMatches.map((m) => {
+                    const other = m.volunteerId === uid ? m.requesterName : m.volunteerName
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setOpenChatMatchId(m.id)}
+                        className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left"
+                      >
+                        <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary">
+                          <MessageCircle size={22} />
+                        </span>
+                        <div className="min-w-0 flex-grow">
+                          <p className="font-bold">{other}님</p>
+                          <p className="text-sm text-ink-soft">
+                            {CATEGORY_LABELS[m.category]} · {MATCH_STATUS_LABELS[m.status]}
+                          </p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+
         {tab === 'sos' && (
           <div className="h-full overflow-y-auto p-5">
             <div className="flex flex-col items-center gap-3 rounded-2xl bg-danger-tint px-4 py-10 text-center">
@@ -434,6 +541,12 @@ export default function Home() {
       <nav className="z-40 flex items-center justify-around bg-surface px-2 pb-6 pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
         <NavItem icon={MapIcon} label="지도" active={tab === 'map'} onClick={() => setTab('map')} />
         <NavItem icon={List} label="목록" active={tab === 'list'} onClick={() => setTab('list')} />
+        <NavItem
+          icon={MessageCircle}
+          label="채팅"
+          active={tab === 'chat'}
+          onClick={() => setTab('chat')}
+        />
         <NavItem icon={Siren} label="SOS" active={tab === 'sos'} danger onClick={() => setTab('sos')} />
         <NavItem
           icon={User}
@@ -492,6 +605,36 @@ export default function Home() {
         />
       )}
       {showCreate && <RequestFormModal onClose={() => setShowCreate(false)} />}
+
+      {showNotifications && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowNotifications(false)}>
+          <div
+            className="absolute right-3 top-16 max-h-[70%] w-[88%] max-w-[360px] overflow-y-auto rounded-2xl bg-surface p-3 shadow-xl no-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 px-1 text-base font-bold">알림</h3>
+            {notifications.length === 0 ? (
+              <p className="px-1 py-6 text-center text-sm text-ink-soft">새 알림이 없어요.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {notifications.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMatchId(n.matchId)
+                      setShowNotifications(false)
+                    }}
+                    className="rounded-xl border border-line bg-surface-alt p-3 text-left text-sm"
+                  >
+                    {n.text}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
